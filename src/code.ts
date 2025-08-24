@@ -23,3 +23,11 @@ if (figma.editorType === 'figma') {
   // keep running, which shows the cancel button at the bottom of the screen.
   figma.closePlugin();
 }
+
+if (figma.editorType === 'dev') {
+  console.log('Dev Modeで実行中')
+
+  // Dev Mode固有の処理
+  // 例：デザイントークンの抽出、コード生成など
+  figma.closePlugin();
+}
