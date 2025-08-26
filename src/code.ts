@@ -1,33 +1,53 @@
-// This file holds the main code for plugins. Code in this file has access to
-// the *figma document* via the figma global object.
-// You can access browser APIs in the <script> tag inside "ui.html" which has a
-// full browser environment (See https://www.figma.com/plugin-docs/how-plugins-run).
-
-// Runs this code if the plugin is run in Figma
-if (figma.editorType === 'figma') {
-  // This plugin creates rectangles on the screen.
-  const numberOfRectangles = 5;
-
-  const nodes: SceneNode[] = [];
-  for (let i = 0; i < numberOfRectangles; i++) {
-    const rect = figma.createRectangle();
-    rect.x = i * 150;
-    rect.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
-    figma.currentPage.appendChild(rect);
-    nodes.push(rect);
+async function main() {
+  if (figma.editorType === 'figma') {
+    console.log("figmaで実行中")
   }
-  figma.currentPage.selection = nodes;
-  figma.viewport.scrollAndZoomIntoView(nodes);
 
-  // Make sure to close the plugin when you're done. Otherwise the plugin will
-  // keep running, which shows the cancel button at the bottom of the screen.
-  figma.closePlugin();
+  if (figma.editorType === 'dev') {
+    console.log("devで実行中")
+  }
+
+  // TODO: try catch
+
+  // Collectionsを全て取得
+  const localCollections = await figma.variables.getLocalVariableCollectionsAsync();
+  console.log(`📦 Found ${localCollections.length} variable collections`)
+
+  // ない場合は終了
+  if (localCollections.length === 0) {
+    figma.closePlugin('No variable collections found. Please create some variables first.')
+    return
+  }
+
+  // collectionを取得
+  for (const collection of localCollections) {
+    console.log(`Processing collection: ${collection.name}`)
+
+    // collectionのvariablesを取得する
+    const variables = await Promise.all(
+        collection.variableIds.map(id => figma.variables.getVariableByIdAsync(id)) // functionにした方がよいかも
+    )
+
+    console.log(`collection.id: ${collection.id}, collection.mode: ${collection.defaultModeId}, collection.modes: ${JSON.stringify(collection.modes)}`)
+
+    for (const variable of variables) {
+      if (variable) {
+        console.log(`variable.id: ${variable.id}`)
+        console.log(`mode: ${JSON.stringify(variable.valuesByMode[collection.defaultModeId])}`)
+        console.log(variable.valuesByMode[collection.defaultModeId])
+
+        // const v = await figma.variables.getVariableByIdAsync(variable.id)
+        // if (v) {
+        //   console.log(`id: ${v.id}`)
+        //   console.log(`resolvedType: ${v.resolvedType}`)
+        // } else {
+        //   console.log(`  - Variable not found`)
+        // }
+      }
+    }
+  }
+
+  figma.closePlugin()
 }
 
-if (figma.editorType === 'dev') {
-  console.log('Dev Modeで実行中')
-
-  // Dev Mode固有の処理
-  // 例：デザイントークンの抽出、コード生成など
-  figma.closePlugin();
-}
+main()

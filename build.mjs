@@ -8,7 +8,7 @@ const buildOptions = {
     outfile: 'dist/code.js',
     bundle: true,
     format: 'iife',
-    target: 'es6',
+    target: 'es2017',
     minify: !isDev,
     sourcemap: isDev,
     platform: "neutral",
