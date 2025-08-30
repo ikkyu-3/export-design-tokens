@@ -50,4 +50,19 @@ async function main() {
   figma.closePlugin()
 }
 
+async function getTextStyles() {
+  const textStyles = await figma.getLocalTextStylesAsync()
+  console.log(`📝 Found ${textStyles.length} text styles`)
+}
+
+async function getPaintStyles() {
+  const paintStyles = await figma.getLocalPaintStylesAsync()
+  console.log(`🎨 Found ${paintStyles.length} paint styles`)
+}
+
+async function getEffectStyles() {
+  const effectStyles = await figma.getLocalEffectStylesAsync()
+  console.log(`✨ Found ${effectStyles.length} effect styles`)
+}
+
 main()
