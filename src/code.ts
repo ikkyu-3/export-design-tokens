@@ -1,68 +1,55 @@
+import { getCollections } from "./collections";
+// import { getTextStyles } from "./textStyles";
+// import { getPaintStyles } from "./paintStyles";
+// import { getEffectStyles } from "./effectStyles";
+import { convertCollectionToModeNamedGroups } from "./converts/convertCollectionToGroup";
+import { resolveAliasesForAllCollections } from "./resolve";
+
+figma.showUI(__html__, { width: 280, height: 80, visible: false });
+
+figma.ui.onmessage = (msg) => {
+  if (msg?.type === "download-complete") {
+    figma.closePlugin();
+  } else if (msg?.type === "error") {
+    figma.closePlugin("エラーが発生しました: " + msg.error);
+  }
+};
+
 async function main() {
-  if (figma.editorType === 'figma') {
-    console.log("figmaで実行中")
+  if (figma.editorType === "figma") {
+    console.log("figmaで実行中");
   }
 
-  if (figma.editorType === 'dev') {
-    console.log("devで実行中")
+  if (figma.editorType === "dev") {
+    console.log("devで実行中");
   }
 
-  // TODO: try catch
+  try {
+    console.log("========== get collections ==========");
+    const collections = await getCollections();
+    // console.log(collections);
+    // await getTextStyles();
+    // await getPaintStyles();
+    // await getEffectStyles();
 
-  // Collectionsを全て取得
-  const localCollections = await figma.variables.getLocalVariableCollectionsAsync();
-  console.log(`📦 Found ${localCollections.length} variable collections`)
+    console.log("========== resolve aliases ==========");
+    const resolvedAliasNames = resolveAliasesForAllCollections(collections);
 
-  // ない場合は終了
-  if (localCollections.length === 0) {
-    figma.closePlugin('No variable collections found. Please create some variables first.')
-    return
+    const groups = resolvedAliasNames.map((c) =>
+      convertCollectionToModeNamedGroups(c),
+    );
+    console.log(groups);
+
+    figma.ui.postMessage({
+      type: "download-zip",
+      data: {
+        collections: groups,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    figma.closePlugin(`Export処理中にエラーが発生しました.`);
   }
-
-  // collectionを取得
-  for (const collection of localCollections) {
-    console.log(`Processing collection: ${collection.name}`)
-
-    // collectionのvariablesを取得する
-    const variables = await Promise.all(
-        collection.variableIds.map(id => figma.variables.getVariableByIdAsync(id)) // functionにした方がよいかも
-    )
-
-    console.log(`collection.id: ${collection.id}, collection.mode: ${collection.defaultModeId}, collection.modes: ${JSON.stringify(collection.modes)}`)
-
-    for (const variable of variables) {
-      if (variable) {
-        console.log(`variable.id: ${variable.id}`)
-        console.log(`mode: ${JSON.stringify(variable.valuesByMode[collection.defaultModeId])}`)
-        console.log(variable.valuesByMode[collection.defaultModeId])
-
-        // const v = await figma.variables.getVariableByIdAsync(variable.id)
-        // if (v) {
-        //   console.log(`id: ${v.id}`)
-        //   console.log(`resolvedType: ${v.resolvedType}`)
-        // } else {
-        //   console.log(`  - Variable not found`)
-        // }
-      }
-    }
-  }
-
-  figma.closePlugin()
 }
 
-async function getTextStyles() {
-  const textStyles = await figma.getLocalTextStylesAsync()
-  console.log(`📝 Found ${textStyles.length} text styles`)
-}
-
-async function getPaintStyles() {
-  const paintStyles = await figma.getLocalPaintStylesAsync()
-  console.log(`🎨 Found ${paintStyles.length} paint styles`)
-}
-
-async function getEffectStyles() {
-  const effectStyles = await figma.getLocalEffectStylesAsync()
-  console.log(`✨ Found ${effectStyles.length} effect styles`)
-}
-
-main()
+main();

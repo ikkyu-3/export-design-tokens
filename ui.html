@@ -1,0 +1,87 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+  async function downloadAsZip(data, zipFilename = "figma-export.zip") {
+    try {
+      const zip = new JSZip();
+
+      const { collections } = data;
+
+      for (const group of collections) {
+        const groupKeys = Object.keys(group);
+        if (groupKeys.length === 1) {
+          const key = Object.keys(group)[0];
+          const filename = `${key}.json`;
+          const jsonContent = JSON.stringify(group, null, 2);
+
+          zip.file(filename, jsonContent);
+        } else if (groupKeys.length > 1) {
+          groupKeys.forEach((key) => {
+            const filename = `${key}.json`;
+            const jsonContent = JSON.stringify({ [key]: group[key] }, null, 2);
+            zip.file(filename, jsonContent);
+          });
+        } else {
+          console.warn("No valid keys found in group:", group);
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: {
+          level: 6, // 圧縮レベル (1-9)
+        },
+      });
+
+      // ZIPファイルをダウンロード
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = zipFilename;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // 完了通知
+      parent.postMessage(
+        {
+          pluginMessage: {
+            type: "download-complete",
+          },
+        },
+        "*",
+      );
+    } catch (error) {
+      console.error("ZIP作成エラー:", error);
+
+      parent.postMessage(
+        {
+          pluginMessage: {
+            type: "error",
+            error: error.message,
+          },
+        },
+        "*",
+      );
+    }
+  }
+
+  onmessage = (event) => {
+    const msg = event.data.pluginMessage;
+
+    if (msg?.type === "download-zip") {
+      const now = new Date();
+      const timestamp =
+        now.getFullYear().toString() +
+        (now.getMonth() + 1).toString().padStart(2, "0") +
+        now.getDate().toString().padStart(2, "0") +
+        now.getHours().toString().padStart(2, "0") +
+        now.getMinutes().toString().padStart(2, "0");
+
+      const zipFilename = `export-design-tokens_${timestamp}.zip`;
+      downloadAsZip(msg.data, zipFilename);
+    }
+  };
+</script>
