@@ -16,14 +16,6 @@ figma.ui.onmessage = (msg) => {
 };
 
 async function main() {
-  if (figma.editorType === "figma") {
-    console.log("figmaで実行中");
-  }
-
-  if (figma.editorType === "dev") {
-    console.log("devで実行中");
-  }
-
   try {
     console.log("========== get collections ==========");
     const collections = await getCollections();
@@ -38,7 +30,6 @@ async function main() {
     const groups = resolvedAliasNames.map((c) =>
       convertCollectionToModeNamedGroups(c),
     );
-    console.log(groups);
 
     figma.ui.postMessage({
       type: "download-zip",
