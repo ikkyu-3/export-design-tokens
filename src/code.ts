@@ -35,7 +35,7 @@ async function main() {
     figma.ui.postMessage({
       type: "download-zip",
       data: {
-        collections: [...groups, typography],
+        collections: [...groups, typography].filter(Boolean),
       },
     });
   } catch (e) {
