@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isColorValue, isAliasValue, toTokenReference } from "./util";
+import {
+  isColorValue,
+  isAliasValue,
+  toTokenReference,
+  roundTo2ndDecimal,
+} from "./util";
 import {
   mockColorVariable,
   mockColorAliasVariable,
@@ -70,5 +75,38 @@ describe("toTokenReference", () => {
     const modeId = Object.keys(mockColorAliasVariable.valuesByMode)[0];
     const alias = mockColorAliasVariable.valuesByMode[modeId] as VariableAlias;
     expect(toTokenReference(alias)).toBe(`{${alias.id}}`);
+  });
+});
+
+describe("roundTo2ndDecimal", () => {
+  it("正の数を小数第2位で四捨五入する", () => {
+    expect(roundTo2ndDecimal(1.234)).toBe(1.23);
+    expect(roundTo2ndDecimal(1.235)).toBe(1.24);
+    expect(roundTo2ndDecimal(1.5)).toBe(1.5);
+  });
+
+  it("負の数を小数第2位で四捨五入する", () => {
+    expect(roundTo2ndDecimal(-1.234)).toBe(-1.23);
+    expect(roundTo2ndDecimal(-1.235)).toBe(-1.23);
+    expect(roundTo2ndDecimal(-1.236)).toBe(-1.24);
+  });
+
+  it("整数はそのまま返す", () => {
+    expect(roundTo2ndDecimal(10)).toBe(10);
+    expect(roundTo2ndDecimal(0)).toBe(0);
+  });
+
+  it("境界値 0.005 を正しく丸める", () => {
+    expect(roundTo2ndDecimal(0.005)).toBe(0.01);
+    expect(roundTo2ndDecimal(1.005)).toBe(1.01);
+  });
+
+  it("Infinity を渡すと TypeError を投げる", () => {
+    expect(() => roundTo2ndDecimal(Infinity)).toThrow(TypeError);
+    expect(() => roundTo2ndDecimal(-Infinity)).toThrow(TypeError);
+  });
+
+  it("NaN を渡すと TypeError を投げる", () => {
+    expect(() => roundTo2ndDecimal(NaN)).toThrow(TypeError);
   });
 });

@@ -10,6 +10,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
     - modeが1つ: collection名
     - modeが複数: collection名 + Capitalize(mode名)（例: MyCollection + dark → MyCollectionDark）
 - Variableのエイリアス(ID参照)は名前参照に解決して出力（参照形式: `{GroupName.TokenName}`）
+- Text Styles を Typography トークンとして出力
 
 ## 処理の流れ
 - プラグイン実行 → ローカル変数/スタイルを取得 → エイリアス解決 → JSON生成 → ZIPでダウンロード
@@ -33,6 +34,32 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 - FLOAT を dimension として出力したい場合、`ALL_SCOPES`/`OPACITY` を含めないでください（含むと number とみなされます）
 - fontWeight は FLOAT/STRING で条件が異なります（上表参照）
 
+## Text Styles (Typography) 変換ルール
+
+Text Styles は `typography` トークンに変換されます。以下のプロパティが含まれます：
+
+| プロパティ | 変換ルール |
+|---|---|
+| fontFamily | `fontName.family` をそのまま使用 |
+| fontWeight | `fontName.style` から数値に変換（例: "Bold" → 700、未定義は 400） |
+| fontSize | `fontSize` を `{ value: number, unit: "px" }` 形式で出力 |
+| letterSpacing | PIXELS の場合はそのまま、PERCENT の場合は `fontSize * (value / 100)` で px に変換 |
+| lineHeight | unitless（数値）として出力。変換ルールは以下の通り |
+
+### lineHeight 変換ルール
+
+| Figma unit | 変換ルール |
+|---|---|
+| AUTO | 1.5 を返す |
+| PERCENT | `value / 100` で比率に変換（小数第2位で四捨五入） |
+| PIXELS（0.5〜3の範囲） | そのまま unitless として採用（小数第2位で四捨五入） |
+| PIXELS（上記以外） | `lineHeightPx / fontSizePx` で比率を算出（小数第2位で四捨五入） |
+
+注意:
+- lineHeight/letterSpacing で Infinity/NaN が検出された場合は TypeError を投げます
+- fontSize が 0 の場合も TypeError を投げます
+- 数値の丸め処理には `roundTo2ndDecimal` を使用し、浮動小数点誤差を軽減しています
+
 ## エイリアス（Alias）
 - FigmaのエイリアスはID参照ですが、出力時は `{GroupName.TokenName}` 形式に解決します
 - GroupNameは makeGroupName に基づく命名規則（単一: collection名、複数: collection名 + Capitalize(mode名)）で決定されます
@@ -44,7 +71,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 
 ## ロードマップ
 - [x] local variables
-- [ ] Text Styles
+- [x] Text Styles
 - [ ] Color Styles
 - [ ] Effect Styles
 
