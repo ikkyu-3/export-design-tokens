@@ -121,3 +121,15 @@ export function cloneObject<T>(obj: T): T | null {
     return null;
   }
 }
+
+export function roundTo2ndDecimal(value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new TypeError(
+      "roundTo2ndDecimal: 有効な有限数値を指定してください。",
+    );
+  }
+
+  const scaled = Math.fround(value * 100);
+  const rounded = Math.round(scaled);
+  return rounded / 100;
+}

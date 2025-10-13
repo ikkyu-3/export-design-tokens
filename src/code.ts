@@ -1,5 +1,5 @@
 import { getCollections } from "./collections";
-// import { getTextStyles } from "./textStyles";
+import { getTextStyles } from "./textStyles";
 // import { getPaintStyles } from "./paintStyles";
 // import { getEffectStyles } from "./effectStyles";
 import { convertCollectionToModeNamedGroups } from "./converts/convertCollectionToGroup";
@@ -19,22 +19,23 @@ async function main() {
   try {
     console.log("========== get collections ==========");
     const collections = await getCollections();
-    // console.log(collections);
-    // await getTextStyles();
-    // await getPaintStyles();
-    // await getEffectStyles();
 
     console.log("========== resolve aliases ==========");
     const resolvedAliasNames = resolveAliasesForAllCollections(collections);
-
     const groups = resolvedAliasNames.map((c) =>
       convertCollectionToModeNamedGroups(c),
     );
 
+    console.log("========== get textStyles ==========");
+    const typography = await getTextStyles();
+
+    // await getPaintStyles();
+    // await getEffectStyles();
+
     figma.ui.postMessage({
       type: "download-zip",
       data: {
-        collections: groups,
+        collections: [...groups, typography],
       },
     });
   } catch (e) {
