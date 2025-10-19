@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { FigmaCollectionData } from "../collections";
 import { resolveAliasesForAllCollections } from "./index";
+import { createVariableNameMap } from "./createVariableNameMap";
 
 describe("resolveAliasesForAllCollections", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -41,7 +42,8 @@ describe("resolveAliasesForAllCollections", () => {
       },
     ];
 
-    const result = resolveAliasesForAllCollections(collections);
+    const nameMap = createVariableNameMap(collections);
+    const result = resolveAliasesForAllCollections(collections, nameMap);
 
     expect(
       (collections[0].variables[1].valuesByMode.m1 as VariableAlias).id,
@@ -90,7 +92,8 @@ describe("resolveAliasesForAllCollections", () => {
       },
     ];
 
-    const result = resolveAliasesForAllCollections(collections);
+    const nameMap = createVariableNameMap(collections);
+    const result = resolveAliasesForAllCollections(collections, nameMap);
 
     const resolved = result[1].variables[0].valuesByMode.mB as VariableAlias;
     expect(resolved).toEqual({
@@ -141,7 +144,8 @@ describe("resolveAliasesForAllCollections", () => {
       },
     ];
 
-    const result = resolveAliasesForAllCollections(collections);
+    const nameMap = createVariableNameMap(collections);
+    const result = resolveAliasesForAllCollections(collections, nameMap);
 
     const resolved = result[1].variables[0].valuesByMode.m1 as VariableAlias;
     expect(resolved).toEqual({
@@ -170,7 +174,8 @@ describe("resolveAliasesForAllCollections", () => {
       },
     ];
 
-    const result = resolveAliasesForAllCollections(collections);
+    const nameMap = createVariableNameMap(collections);
+    const result = resolveAliasesForAllCollections(collections, nameMap);
 
     const resolved = result[0].variables[0].valuesByMode.m1 as VariableAlias;
     expect(resolved).toEqual({
@@ -209,7 +214,8 @@ describe("resolveAliasesForAllCollections", () => {
     ];
 
     const before = JSON.parse(JSON.stringify(collections));
-    const result = resolveAliasesForAllCollections(collections);
+    const nameMap = createVariableNameMap(collections);
+    const result = resolveAliasesForAllCollections(collections, nameMap);
 
     expect(collections).toEqual(before);
 
