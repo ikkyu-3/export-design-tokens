@@ -15,10 +15,6 @@ export type VariableNameMap = ReturnType<typeof createVariableNameMap>;
 
 export function createVariableNameMap(collections: FigmaCollectionData[]) {
   const variableNameMap = new Map<VariableId, VariableNameValue>();
-  const variableNameByMode = new Map<
-    VariableId,
-    Record<ModeId, VariableName>
-  >();
 
   collections.forEach((col) => {
     const modes = col.modes ?? [];
@@ -38,8 +34,6 @@ export function createVariableNameMap(collections: FigmaCollectionData[]) {
         const groupName = makeGroupName(col.name, mode.name, multiple);
         entry[mode.modeId] = `${groupName}.${v.name}`;
       });
-
-      variableNameByMode.set(v.id, entry);
 
       const defaultName = entry[col.defaultModeId];
       if (!defaultName) {

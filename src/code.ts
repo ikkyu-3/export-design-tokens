@@ -1,9 +1,10 @@
 import { getCollections } from "./collections";
 import { getTextStyles } from "./textStyles";
-// import { getPaintStyles } from "./paintStyles";
 // import { getEffectStyles } from "./effectStyles";
 import { convertCollectionToModeNamedGroups } from "./converts/convertCollectionToGroup";
 import { resolveAliasesForAllCollections } from "./resolve";
+import { getPaintStyles } from "./paintStyles";
+import { createVariableNameMap } from "./resolve/createVariableNameMap";
 
 figma.showUI(__html__, { width: 280, height: 80, visible: false });
 
@@ -20,8 +21,14 @@ async function main() {
     console.log("========== get collections ==========");
     const collections = await getCollections();
 
+    console.log("========== create variable name map ==========");
+    const variableNameMap = createVariableNameMap(collections);
+
     console.log("========== resolve aliases ==========");
-    const resolvedAliasNames = resolveAliasesForAllCollections(collections);
+    const resolvedAliasNames = resolveAliasesForAllCollections(
+      collections,
+      variableNameMap,
+    );
     const groups = resolvedAliasNames.map((c) =>
       convertCollectionToModeNamedGroups(c),
     );
@@ -29,13 +36,13 @@ async function main() {
     console.log("========== get textStyles ==========");
     const typography = await getTextStyles();
 
-    // await getPaintStyles();
-    // await getEffectStyles();
+    console.log("========== get paintStyles ==========");
+    const paintStyles = await getPaintStyles(variableNameMap);
 
     figma.ui.postMessage({
       type: "download-zip",
       data: {
-        collections: [...groups, typography].filter(Boolean),
+        collections: [...groups, typography, paintStyles].filter(Boolean),
       },
     });
   } catch (e) {

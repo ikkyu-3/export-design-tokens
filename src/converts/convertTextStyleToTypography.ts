@@ -8,7 +8,6 @@ import {
   TypographyValue,
 } from "../types/token";
 import { roundTo2ndDecimal } from "./util";
-import { textStyles } from "../../mocks/textStyles";
 
 type FigmaFontSize = Pick<DimensionValue, "value"> & { unit: "px" };
 

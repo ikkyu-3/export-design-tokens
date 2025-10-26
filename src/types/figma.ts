@@ -1,4 +1,7 @@
-import { TextStyle } from "@figma/plugin-typings/plugin-api-standalone";
+import {
+  TextStyle,
+  PaintStyle,
+} from "@figma/plugin-typings/plugin-api-standalone";
 
 export type FigmaTextStyle = Pick<
   TextStyle,
@@ -18,4 +21,9 @@ export type FigmaTextStyle = Pick<
   | "listSpacing"
   | "hangingPunctuation"
   | "hangingList"
+>;
+
+export type FigmaColorStyle = Pick<
+  PaintStyle,
+  "id" | "name" | "description" | "type" | "paints"
 >;

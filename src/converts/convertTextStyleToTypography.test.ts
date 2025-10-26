@@ -25,9 +25,10 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
-    expect(result.$type).toBe("typography");
-    expect(result.$description).toBe("");
+    const typography = result[textStyle.name];
+    const value = typography.$value as TypographyValue;
+    expect(typography.$type).toBe("typography");
+    expect(typography.$description).toBe("");
     expect(value.fontFamily).toBe("Inter");
     expect(value.fontWeight).toBe(400);
     expect(value.fontSize).toEqual({ value: 16, unit: "px" });
@@ -56,8 +57,9 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-
-    expect(result.$description).toBe("本文用のテキストスタイル");
+    expect(result[textStyle.name].$description).toBe(
+      "本文用のテキストスタイル",
+    );
   });
 
   it("fontWeight を style 名から正しく変換する", () => {
@@ -81,7 +83,7 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
+    const value = result[textStyle.name].$value as TypographyValue;
     expect(value.fontWeight).toBe(700);
   });
 
@@ -106,7 +108,7 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
+    const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.5);
   });
@@ -132,7 +134,7 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
+    const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.2);
   });
@@ -158,7 +160,7 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
+    const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.5);
   });
@@ -184,7 +186,7 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
+    const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.5);
   });
@@ -210,7 +212,7 @@ describe("convertTextStyleToTypography", () => {
     };
 
     const result = convertTextStyleToTypography(textStyle);
-    const value = result.$value as TypographyValue;
+    const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.letterSpacing).toEqual({ value: 0.8, unit: "px" });
   });
