@@ -11,6 +11,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
     - modeが複数: collection名 + Capitalize(mode名)（例: MyCollection + dark → MyCollectionDark）
 - Variableのエイリアス(ID参照)は名前参照に解決して出力（参照形式: `{GroupName.TokenName}`）
 - Text Styles を Typography トークンとして出力
+- Paint Styles を Color/Gradient トークンとして出力
 
 ## 処理の流れ
 - プラグイン実行 → ローカル変数/スタイルを取得 → エイリアス解決 → JSON生成 → ZIPでダウンロード
@@ -60,6 +61,36 @@ Text Styles は `typography` トークンに変換されます。以下のプロ
 - fontSize が 0 の場合も TypeError を投げます
 - 数値の丸め処理には `roundTo2ndDecimal` を使用し、浮動小数点誤差を軽減しています
 
+## Paint Styles (Color/Gradient) 変換ルール
+
+Paint Styles は `color` または `gradient` トークンに変換されます。
+
+### SOLID Paint → Color Token
+
+- SOLID タイプのペイントを `color` トークンに変換
+- boundVariables に color エイリアスがある場合：
+  - `paint.opacity === 1` の場合のみエイリアス参照を使用（`{GroupName.tokenName}`）
+  - `paint.opacity !== 1` の場合は透明度を掛け合わせた値を出力
+- boundVariables がない場合は RGB(A) 値をそのまま出力
+
+### GRADIENT_LINEAR Paint → Gradient Token
+
+- GRADIENT_LINEAR タイプのペイントを `gradient` トークンに変換
+- 各 gradientStop の色を以下のルールで処理：
+  - boundVariables に color エイリアスがある場合：
+    - `paint.opacity === 1` の場合のみエイリアス参照を使用
+    - `paint.opacity !== 1` の場合は各停止点の透明度にペイント全体の透明度を掛け合わせ
+  - RGB(A) 値の場合は同様に透明度を適用
+
+### 命名規則
+
+- 単数：PaintStyle の name をそのまま使用
+- 複数：`{name}-color-{index}` または `{name}-gradient-{index}` で命名（0始まり）
+
+### 非対応タイプ
+
+- IMAGE/VIDEO タイプは出力対象外
+
 ## エイリアス（Alias）
 - FigmaのエイリアスはID参照ですが、出力時は `{GroupName.TokenName}` 形式に解決します
 - GroupNameは makeGroupName に基づく命名規則（単一: collection名、複数: collection名 + Capitalize(mode名)）で決定されます
@@ -72,7 +103,7 @@ Text Styles は `typography` トークンに変換されます。以下のプロ
 ## ロードマップ
 - [x] local variables
 - [x] Text Styles
-- [ ] Color Styles
+- [x] Color Styles (Paint Styles)
 - [ ] Effect Styles
 
 ご意見・不具合の報告はIssueまで
