@@ -1,6 +1,6 @@
 {
   "name": "export-design-tokens",
-  "version": "3",
+  "version": "4",
   "description": "自分のFigmaプラグイン",
   "main": "dist/code.js",
   "scripts": {
