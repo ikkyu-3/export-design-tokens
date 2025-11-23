@@ -14,7 +14,7 @@ function toColorValue(color: FigmaRGBA): ColorValue {
 }
 
 function toShadowObject(effect: FigmaDropShadowEffect): ShadowObjectValue {
-  const base = {
+  const base: ShadowObjectValue = {
     color: toColorValue(effect.color),
     offsetX: { value: effect.offset.x, unit: "px" },
     offsetY: { value: effect.offset.y, unit: "px" },

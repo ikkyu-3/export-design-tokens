@@ -4,12 +4,12 @@ import {
   mockColorVariable,
   mockColorAliasVariable,
 } from "../../mocks/variables";
-import { FigmaColorValue } from "../collections";
+import { FigmaRGBA } from "../types/figma";
 
 describe("convertToColorToken", () => {
   it("RGB値をColorTokenに変換できる", () => {
     const modeId = Object.keys(mockColorVariable.valuesByMode)[0];
-    const v = mockColorVariable.valuesByMode[modeId] as FigmaColorValue;
+    const v = mockColorVariable.valuesByMode[modeId] as FigmaRGBA;
     const token = convertToColorToken(mockColorVariable, modeId);
 
     expect(token.$type).toBe("color");
@@ -39,7 +39,7 @@ describe("convertToColorToken", () => {
 
   it("alphaが未指定の場合は1として扱われる", () => {
     const modeId = Object.keys(mockColorVariable.valuesByMode)[0];
-    const original = mockColorVariable.valuesByMode[modeId] as FigmaColorValue;
+    const original = mockColorVariable.valuesByMode[modeId] as FigmaRGBA;
     const variableWithoutAlpha = {
       ...mockColorVariable,
       valuesByMode: {
