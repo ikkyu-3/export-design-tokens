@@ -14,14 +14,17 @@ function toColorValue(color: FigmaRGBA): ColorValue {
 }
 
 function toShadowObject(effect: FigmaDropShadowEffect): ShadowObjectValue {
-  return {
+  const base = {
     color: toColorValue(effect.color),
     offsetX: { value: effect.offset.x, unit: "px" },
     offsetY: { value: effect.offset.y, unit: "px" },
     blur: { value: effect.radius, unit: "px" },
     spread: { value: effect.spread || 0, unit: "px" },
-    inset: effect.type === "INNER_SHADOW",
   };
+  if (effect.type === "INNER_SHADOW") {
+    return { ...base, inset: true };
+  }
+  return base;
 }
 
 /**
