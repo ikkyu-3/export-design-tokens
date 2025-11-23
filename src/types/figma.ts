@@ -2,6 +2,7 @@ import {
   TextStyle,
   PaintStyle,
   EffectStyle,
+  Effect,
 } from "@figma/plugin-typings/plugin-api-standalone";
 
 export type FigmaTextStyle = Pick<
