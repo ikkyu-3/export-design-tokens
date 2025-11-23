@@ -126,7 +126,7 @@ export interface TransitionToken extends CommonProperties {
   $value: TokenValue<TransitionValue>;
 }
 
-interface ShadowObjectValue {
+export interface ShadowObjectValue {
   color: TokenValue<ColorValue>;
   offsetX: TokenValue<DimensionValue>;
   offsetY: TokenValue<DimensionValue>;

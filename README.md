@@ -12,6 +12,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 - Variableのエイリアス(ID参照)は名前参照に解決して出力（参照形式: `{GroupName.TokenName}`）
 - Text Styles を Typography トークンとして出力
 - Paint Styles を Color/Gradient トークンとして出力
+- Effect Styles を Shadow トークンとして出力
 
 ## 処理の流れ
 - プラグイン実行 → ローカル変数/スタイルを取得 → エイリアス解決 → JSON生成 → ZIPでダウンロード
@@ -91,6 +92,22 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
 
 - IMAGE/VIDEO タイプは出力対象外
 
+## Effect Styles (Shadow) 変換ルール
+
+Effect Styles は `shadow` トークンに変換されます。
+
+- **対象**: `visible: true` かつ、タイプが `DROP_SHADOW` または `INNER_SHADOW` のエフェクトのみ抽出
+- **構造**: 1つのStyleに複数のエフェクトがある場合、配列として出力されます（Figmaのスタック順序＝配列順序を維持）
+
+| プロパティ | 変換ルール |
+|---|---|
+| color | RGBA値を変換 |
+| offsetX | `offset.x` を `{ value: number, unit: "px" }` 形式で出力 |
+| offsetY | `offset.y` を `{ value: number, unit: "px" }` 形式で出力 |
+| blur | `radius` を `{ value: number, unit: "px" }` 形式で出力 |
+| spread | `spread` を `{ value: number, unit: "px" }` 形式で出力 |
+| inset | `INNER_SHADOW` の場合 `true`、それ以外は省略 |
+
 ## エイリアス（Alias）
 - FigmaのエイリアスはID参照ですが、出力時は `{GroupName.TokenName}` 形式に解決します
 - GroupNameは makeGroupName に基づく命名規則（単一: collection名、複数: collection名 + Capitalize(mode名)）で決定されます
@@ -104,6 +121,6 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
 - [x] local variables
 - [x] Text Styles
 - [x] Color Styles (Paint Styles)
-- [ ] Effect Styles
+- [x] Effect Styles
 
 ご意見・不具合の報告はIssueまで

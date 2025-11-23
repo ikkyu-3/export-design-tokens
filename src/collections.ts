@@ -49,10 +49,6 @@ export async function getCollections(): Promise<FigmaCollectionData[]> {
       ),
     );
 
-    console.log(
-      `        collection.id: ${collection.id}, collection.mode: ${collection.defaultModeId}, collection.modes: ${JSON.stringify(collection.modes)}`,
-    );
-
     const figmaData: FigmaCollectionData = {
       id: collection.id,
       name: collection.name,
