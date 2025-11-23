@@ -1,6 +1,6 @@
 import { getCollections } from "./collections";
 import { getTextStyles } from "./textStyles";
-// import { getEffectStyles } from "./effectStyles";
+import { getEffectStyles } from "./effectStyles";
 import { convertCollectionToModeNamedGroups } from "./converts/convertCollectionToGroup";
 import { resolveAliasesForAllCollections } from "./resolve";
 import { getPaintStyles } from "./paintStyles";
@@ -39,10 +39,15 @@ async function main() {
     console.log("========== get paintStyles ==========");
     const paintStyles = await getPaintStyles(variableNameMap);
 
+    console.log("========== get effectStyles ==========");
+    const effectStyles = await getEffectStyles();
+
     figma.ui.postMessage({
       type: "download-zip",
       data: {
-        collections: [...groups, typography, paintStyles].filter(Boolean),
+        collections: [...groups, typography, paintStyles, effectStyles].filter(
+          Boolean,
+        ),
       },
     });
   } catch (e) {
