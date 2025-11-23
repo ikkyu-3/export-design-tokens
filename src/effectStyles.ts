@@ -7,12 +7,12 @@ export async function getEffectStyles() {
 
   let shadowTokens: Record<string, ShadowToken> = {};
 
-  effectStyles.forEach((effectStyle) => {
+  for (const effectStyle of effectStyles) {
     const token = convertEffectStyleToShadow(effectStyle);
     if (token) {
-      shadowTokens = { ...shadowTokens, ...token };
+      Object.assign(shadowTokens, token);
     }
-  });
+  }
 
   if (Object.keys(shadowTokens).length === 0) {
     return null;
