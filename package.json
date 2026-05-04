@@ -6,7 +6,7 @@
   "scripts": {
     "type-check": "tsc ",
     "build": "node build.mjs",
-    "build:dev": "npm run typecheck && node build.mjs --dev",
+    "build:dev": "npm run type-check && node build.mjs --dev",
     "watch": "node build.mjs --dev --watch",
     "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules Export Design Tokens",
     "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix Export Design Tokens",
