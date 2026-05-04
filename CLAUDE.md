@@ -50,7 +50,7 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 
 ### スタイル変換
 - **Text Styles** → `typography` トークン。lineHeight の単位（AUTO/PERCENT/PIXELS）と PIXELS の0.5〜3範囲判定など、`convertTextStyleToTypography.ts` 内の特殊ルールに注意。`fontSize=0` や lineHeight/letterSpacing が Infinity/NaN になると TypeError を投げる仕様。
-- **Paint Styles** → `color`（SOLID）/ `gradient`（GRADIENT_LINEAR）。`boundVariables` の color エイリアスは `paint.opacity === 1` のときのみ参照を保ち、それ以外は alpha を掛け合わせて RGB(A) を出力する。複数paintは `{name}-color-{index}` / `{name}-gradient-{index}` で命名（0始まり）。IMAGE/VIDEO は除外。
+- **Paint Styles** → `color`（SOLID）/ `gradient`（GRADIENT_LINEAR）。SOLID は `boundVariables.color` のエイリアスがあれば常にそれを参照として採用する（`paint.opacity` の値に関係なく alias 優先）。GRADIENT は各 stop の `boundVariables.color` を見つつ、`paint.opacity === 1` のときのみエイリアス参照を採用し、それ以外は stop の alpha に paint 全体の opacity を掛け合わせて RGB(A) を出力する。複数paintは `{name}-color-{index}` / `{name}-gradient-{index}` で命名（0始まり）。IMAGE/VIDEO は除外。
 - **Effect Styles** → `shadow` トークン。`visible: true` かつ `DROP_SHADOW`/`INNER_SHADOW` のみ。1Style内の複数エフェクトは配列としてスタック順に保持。`INNER_SHADOW` のときだけ `inset: true`。
 
 ### 型レイヤ（`src/types/`）
