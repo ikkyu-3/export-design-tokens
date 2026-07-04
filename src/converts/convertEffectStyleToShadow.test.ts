@@ -23,7 +23,7 @@ describe("convertEffectStyleToShadow", () => {
     expect(shadowValue).toHaveProperty("offsetY");
     expect(shadowValue).toHaveProperty("blur");
     expect(shadowValue).toHaveProperty("spread");
-    expect((shadowValue as ShadowObjectValue).inset).toBe(false);
+    expect((shadowValue as ShadowObjectValue).inset).toBeUndefined();
   });
 
   it("複数の DROP_SHADOW を配列で変換できる", () => {

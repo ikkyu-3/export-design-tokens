@@ -8,8 +8,8 @@
     "build": "node build.mjs",
     "build:dev": "npm run type-check && node build.mjs --dev",
     "watch": "node build.mjs --dev --watch",
-    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules Export Design Tokens",
-    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix Export Design Tokens",
+    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
+    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "test": "vitest run"
   },
