@@ -156,4 +156,24 @@ describe("sanitizeRecordKeys", () => {
     expect(warnings.items).toHaveLength(1);
     expect(warnings.items[0]).toMatchObject({ kind: "name-sanitize" });
   });
+
+  it("サニタイズ後にキーが衝突した場合は duplicate 警告を記録し後勝ちで上書きする", () => {
+    const warnings = createWarningCollector();
+    const sanitizer = createNameSanitizer(warnings);
+
+    const result = sanitizeRecordKeys(
+      { "a.b": "v1", "a-b": "v2" },
+      sanitizer,
+      "TextStyle: sample",
+      warnings,
+    );
+
+    expect(result).toEqual({ "a-b": "v2" });
+    expect(warnings.items.map((w) => w.kind)).toEqual(
+      expect.arrayContaining(["name-sanitize", "duplicate"]),
+    );
+    expect(warnings.items.filter((w) => w.kind === "duplicate")).toHaveLength(
+      1,
+    );
+  });
 });

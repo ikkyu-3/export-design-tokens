@@ -1,4 +1,5 @@
 import { WarningCollector } from "./warnings";
+import { setTokenWithDuplicateWarning } from "./duplicates";
 
 /** サニタイズで空になった名前のフォールバック */
 export const FALLBACK_TOKEN_NAME = "unnamed";
@@ -42,15 +43,26 @@ export function createNameSanitizer(warnings?: WarningCollector) {
 
 export type NameSanitizer = ReturnType<typeof createNameSanitizer>;
 
-/** Record のキーをまとめてサニタイズする（スタイル系の出力キー用）。値は保持。 */
+/**
+ * Record のキーをまとめてサニタイズする（スタイル系の出力キー用）。値は保持。
+ * サニタイズ後にキーが衝突した場合は setTokenWithDuplicateWarning 経由で
+ * duplicate 警告を記録し後勝ちで上書きする（サイレントな値欠落を防ぐ）。
+ */
 export function sanitizeRecordKeys<T>(
   record: Record<string, T>,
   sanitizer: NameSanitizer,
   source: string,
+  warnings?: WarningCollector,
 ): Record<string, T> {
   const result: Record<string, T> = {};
   for (const [key, value] of Object.entries(record)) {
-    result[sanitizer.sanitize(key, source)] = value;
+    setTokenWithDuplicateWarning(
+      result,
+      sanitizer.sanitize(key, source),
+      value,
+      source,
+      warnings,
+    );
   }
   return result;
 }

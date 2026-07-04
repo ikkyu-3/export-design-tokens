@@ -20,6 +20,7 @@ export function convertTextStylesToTypography(
           convertTextStyleToTypography(textStyle),
           sanitizer,
           `TextStyle: ${textStyle.name}`,
+          warnings,
         ),
         `TextStyle: ${textStyle.name}`,
         warnings,

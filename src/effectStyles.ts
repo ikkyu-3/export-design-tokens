@@ -22,6 +22,7 @@ export function convertEffectStylesToShadows(
             token,
             sanitizer,
             `EffectStyle: ${effectStyle.name}`,
+            warnings,
           ),
           `EffectStyle: ${effectStyle.name}`,
           warnings,

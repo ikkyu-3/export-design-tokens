@@ -25,7 +25,12 @@ export function convertPaintStylesToTokens(
       );
       assignTokensWithDuplicateWarning(
         paintStylesData,
-        sanitizeRecordKeys(tokens, sanitizer, `PaintStyle: ${style.name}`),
+        sanitizeRecordKeys(
+          tokens,
+          sanitizer,
+          `PaintStyle: ${style.name}`,
+          warnings,
+        ),
         `PaintStyle: ${style.name}`,
         warnings,
       );
