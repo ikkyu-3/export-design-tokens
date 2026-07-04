@@ -1,29 +1,25 @@
 import { convertEffectStyleToShadow } from "./converts/convertEffectStyleToShadow";
 import { ShadowToken } from "./types/token";
+import { TokenTree } from "./types/group";
 import { FigmaEffectStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
-import { assignTokensWithDuplicateWarning } from "./duplicates";
-import { createNameSanitizer, sanitizeRecordKeys } from "./sanitize";
+import { createNameSanitizer, nestRecordTokens } from "./sanitize";
 
 export function convertEffectStylesToShadows(
   effectStyles: FigmaEffectStyle[],
   warnings?: WarningCollector,
-): Record<string, ShadowToken> {
-  const shadowTokens: Record<string, ShadowToken> = {};
+): TokenTree<ShadowToken> {
+  const shadowTokens: TokenTree<ShadowToken> = {};
   const sanitizer = createNameSanitizer(warnings);
 
   for (const effectStyle of effectStyles) {
     try {
       const token = convertEffectStyleToShadow(effectStyle);
       if (token) {
-        assignTokensWithDuplicateWarning(
+        nestRecordTokens(
           shadowTokens,
-          sanitizeRecordKeys(
-            token,
-            sanitizer,
-            `EffectStyle: ${effectStyle.name}`,
-            warnings,
-          ),
+          token,
+          sanitizer,
           `EffectStyle: ${effectStyle.name}`,
           warnings,
         );

@@ -282,4 +282,140 @@ describe("resolveAliasesForAllCollections", () => {
     );
     expect(sanitizeWarnings).toHaveLength(2);
   });
+
+  it("`/` 区切りの変数名とエイリアス参照がネスト Group のパスとして解決される（#16 統合テスト）", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-brand-nest",
+        name: "Brand",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-primary",
+            name: "color/brand/primary",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "var-alias",
+            name: "alias/ref",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "mode-1": { type: "VARIABLE_ALIAS", id: "var-primary" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const nameMap = createVariableNameMap(collections);
+    const resolved = resolveAliasesForAllCollections(collections, nameMap);
+    const groups = resolved.map((c) => convertCollectionToModeNamedGroups(c));
+
+    const topLevelKeys = Object.keys(groups[0]);
+    expect(topLevelKeys).toEqual(["Brand"]);
+
+    const group = groups[0]["Brand"] as unknown as Record<
+      string,
+      Record<string, Record<string, { $value: unknown }>>
+    > &
+      Record<string, Record<string, ColorToken>>;
+
+    // 参照パスをツリーとして歩いて $value ノードに到達できること
+    expect(group.color.brand.primary.$value).toBeDefined();
+
+    const aliasToken = group.alias.ref;
+    expect(aliasToken.$value).toBe("{Brand.color.brand.primary}");
+  });
+
+  it("参照パスにサニタイズ対象の segment が混在していても、ネスト後のパスで解決される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-brand-nest-sanitize",
+        name: "Brand",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-primary",
+            name: "color/a.b",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "var-alias",
+            name: "alias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "mode-1": { type: "VARIABLE_ALIAS", id: "var-primary" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const nameMap = createVariableNameMap(collections);
+    const resolved = resolveAliasesForAllCollections(collections, nameMap);
+    const groups = resolved.map((c) => convertCollectionToModeNamedGroups(c));
+
+    const group = groups[0]["Brand"] as unknown as Record<string, ColorToken>;
+    expect(group.alias.$value).toBe("{Brand.color.a-b}");
+  });
+
+  it("複数 mode でも `/` 区切りの参照パスが mode ごとの Group 名で解決される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-brand-nest-multi",
+        name: "Brand",
+        defaultModeId: "dark-id",
+        modes: [
+          { modeId: "light-id", name: "light" },
+          { modeId: "dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-primary",
+            name: "color/brand/primary",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "light-id": { r: 1, g: 1, b: 1, a: 1 },
+              "dark-id": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "var-alias",
+            name: "alias/ref",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "light-id": { type: "VARIABLE_ALIAS", id: "var-primary" },
+              "dark-id": { type: "VARIABLE_ALIAS", id: "var-primary" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const nameMap = createVariableNameMap(collections);
+    const resolved = resolveAliasesForAllCollections(collections, nameMap);
+    const groups = resolved.map((c) => convertCollectionToModeNamedGroups(c));
+
+    const group = groups[0]["BrandDark"] as unknown as Record<
+      string,
+      Record<string, ColorToken>
+    >;
+    expect(group.alias.ref.$value).toBe("{BrandDark.color.brand.primary}");
+  });
 });

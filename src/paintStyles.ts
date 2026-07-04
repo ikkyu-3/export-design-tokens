@@ -4,16 +4,16 @@ import {
 } from "./converts/convertPatintStyleToColorOrGradient";
 import { VariableNameMap } from "./resolve/createVariableNameMap";
 import { FigmaColorStyle } from "./types/figma";
+import { TokenTree } from "./types/group";
 import { WarningCollector } from "./warnings";
-import { assignTokensWithDuplicateWarning } from "./duplicates";
-import { createNameSanitizer, sanitizeRecordKeys } from "./sanitize";
+import { createNameSanitizer, nestRecordTokens } from "./sanitize";
 
 export function convertPaintStylesToTokens(
   paintStyles: FigmaColorStyle[],
   variableNameMap: VariableNameMap,
   warnings?: WarningCollector,
-): Record<string, PaintStyleToken> {
-  const paintStylesData: Record<string, PaintStyleToken> = {};
+): TokenTree<PaintStyleToken> {
+  const paintStylesData: TokenTree<PaintStyleToken> = {};
   const sanitizer = createNameSanitizer(warnings);
 
   for (const style of paintStyles) {
@@ -23,14 +23,10 @@ export function convertPaintStylesToTokens(
         variableNameMap,
         warnings,
       );
-      assignTokensWithDuplicateWarning(
+      nestRecordTokens(
         paintStylesData,
-        sanitizeRecordKeys(
-          tokens,
-          sanitizer,
-          `PaintStyle: ${style.name}`,
-          warnings,
-        ),
+        tokens,
+        sanitizer,
         `PaintStyle: ${style.name}`,
         warnings,
       );

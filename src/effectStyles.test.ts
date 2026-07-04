@@ -3,7 +3,7 @@ import { convertEffectStylesToShadows } from "./effectStyles";
 import { createWarningCollector } from "./warnings";
 import { effectStyles as mockEffectStyles } from "../mocks/effectStyles";
 import { FigmaEffectStyle } from "./types/figma";
-import { ShadowObjectValue } from "./types/token";
+import { ShadowObjectValue, ShadowToken } from "./types/token";
 
 describe("convertEffectStylesToShadows", () => {
   it("visible な DROP_SHADOW/INNER_SHADOW を shadow トークンへ変換する", () => {
@@ -14,7 +14,8 @@ describe("convertEffectStylesToShadows", () => {
       mockEffectStyles.map((s) => s.name).sort(),
     );
 
-    const inset = result["inner shadow"].$value as ShadowObjectValue;
+    const inset = (result["inner shadow"] as ShadowToken)
+      .$value as ShadowObjectValue;
     expect(inset.inset).toBe(true);
 
     expect(warnings.items).toEqual([]);
@@ -85,7 +86,9 @@ describe("convertEffectStylesToShadows", () => {
     );
 
     expect(Object.keys(result)).toEqual(["duplicated"]);
-    expect((result["duplicated"].$value as ShadowObjectValue).blur).toEqual({
+    expect(
+      ((result["duplicated"] as ShadowToken).$value as ShadowObjectValue).blur,
+    ).toEqual({
       value: 8,
       unit: "px",
     });
@@ -120,5 +123,21 @@ describe("convertEffectStylesToShadows", () => {
     expect(sanitizeWarnings).toHaveLength(1);
 
     warnSpy.mockRestore();
+  });
+
+  it("`/` 区切りの EffectStyle 名はネスト Group になる（`elevation/low` → `result.elevation.low`）", () => {
+    const nestedStyle: FigmaEffectStyle = {
+      ...mockEffectStyles[0],
+      name: "elevation/low",
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertEffectStylesToShadows([nestedStyle], warnings);
+
+    const elevation = result["elevation"] as unknown as Record<
+      string,
+      ShadowToken
+    >;
+    expect(elevation.low.$value).toBeDefined();
   });
 });

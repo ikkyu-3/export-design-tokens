@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   sanitizeTokenName,
   createNameSanitizer,
-  sanitizeRecordKeys,
+  toTokenPath,
   FALLBACK_TOKEN_NAME,
 } from "./sanitize";
 import { createWarningCollector } from "./warnings";
@@ -131,7 +131,45 @@ describe("createNameSanitizer", () => {
   });
 });
 
-describe("sanitizeRecordKeys", () => {
+describe("toTokenPath", () => {
+  it("`/` 区切りの名前を segment 配列に分解する", () => {
+    expect(toTokenPath("color/brand/primary")).toEqual([
+      "color",
+      "brand",
+      "primary",
+    ]);
+  });
+
+  it("`/` を含まない名前は単一要素の配列になる", () => {
+    expect(toTokenPath("tokenA")).toEqual(["tokenA"]);
+  });
+
+  it("連続する `/`（空 segment）は unnamed になる", () => {
+    expect(toTokenPath("a//b")).toEqual(["a", "unnamed", "b"]);
+  });
+
+  it("先頭の `/` は先頭 segment が unnamed になる", () => {
+    expect(toTokenPath("/a")).toEqual(["unnamed", "a"]);
+  });
+
+  it("末尾の `/` は末尾 segment が unnamed になる", () => {
+    expect(toTokenPath("a/")).toEqual(["a", "unnamed"]);
+  });
+
+  it("空文字は `[unnamed]` になる", () => {
+    expect(toTokenPath("")).toEqual(["unnamed"]);
+  });
+
+  it("各 segment は独立してサニタイズされる", () => {
+    expect(toTokenPath("a.b/c{d}")).toEqual(["a-b", "c-d-"]);
+  });
+
+  it("split 後に先頭 $ が現れる segment もサニタイズされる", () => {
+    expect(toTokenPath("a/$b")).toEqual(["a", "b"]);
+  });
+});
+
+describe("sanitizePath", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -142,38 +180,51 @@ describe("sanitizeRecordKeys", () => {
     warnSpy.mockRestore();
   });
 
-  it("違反キーをサニタイズしつつ値を保持し、警告を記録する", () => {
-    const warnings = createWarningCollector();
-    const sanitizer = createNameSanitizer(warnings);
-
-    const result = sanitizeRecordKeys(
-      { "a.b": "v1", ok: "v2" },
-      sanitizer,
-      "TextStyle: sample",
-    );
-
-    expect(result).toEqual({ "a-b": "v1", ok: "v2" });
-    expect(warnings.items).toHaveLength(1);
-    expect(warnings.items[0]).toMatchObject({ kind: "name-sanitize" });
+  it.each([
+    "color/brand/primary",
+    "a.b/c",
+    "a//b",
+    "/a/",
+    "$x/$y",
+    "",
+    "色/値",
+  ])("%s: toTokenPath と同じ値を返す（値パリティ）", (name) => {
+    const sanitizer = createNameSanitizer();
+    expect(sanitizer.sanitizePath(name, "source")).toEqual(toTokenPath(name));
   });
 
-  it("サニタイズ後にキーが衝突した場合は duplicate 警告を記録し後勝ちで上書きする", () => {
+  it("違反 segment ごとに name-sanitize warning が記録される", () => {
     const warnings = createWarningCollector();
     const sanitizer = createNameSanitizer(warnings);
 
-    const result = sanitizeRecordKeys(
-      { "a.b": "v1", "a-b": "v2" },
-      sanitizer,
-      "TextStyle: sample",
-      warnings,
-    );
+    const result = sanitizer.sanitizePath("a.b/$c", "TextStyle: sample");
 
-    expect(result).toEqual({ "a-b": "v2" });
-    expect(warnings.items.map((w) => w.kind)).toEqual(
-      expect.arrayContaining(["name-sanitize", "duplicate"]),
-    );
-    expect(warnings.items.filter((w) => w.kind === "duplicate")).toHaveLength(
-      1,
-    );
+    expect(result).toEqual(["a-b", "c"]);
+    expect(
+      warnings.items.filter((w) => w.kind === "name-sanitize"),
+    ).toHaveLength(2);
+  });
+
+  it("`/` のみで区切られた合法な segment では warning が記録されない", () => {
+    const warnings = createWarningCollector();
+    const sanitizer = createNameSanitizer(warnings);
+
+    sanitizer.sanitizePath("color/brand/primary", "source");
+
+    expect(warnings.items).toEqual([]);
+  });
+
+  it("同一 (source, segment) の警告は1回だけ記録される", () => {
+    const warnings = createWarningCollector();
+    const sanitizer = createNameSanitizer(warnings);
+
+    sanitizer.sanitizePath("a.b/a.b", "source");
+
+    expect(warnings.items).toHaveLength(1);
+  });
+
+  it("warnings を指定しなくても throw しない", () => {
+    const sanitizer = createNameSanitizer();
+    expect(() => sanitizer.sanitizePath("a.b/$c", "source")).not.toThrow();
   });
 });

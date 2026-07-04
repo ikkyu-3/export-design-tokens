@@ -267,4 +267,232 @@ describe("convertCollectionToModeNamedGroups", () => {
 
     warnSpy.mockRestore();
   });
+
+  it("`/` 区切りの変数名（単一 mode）はネスト Group になり、葉は $value を持つ", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:nest:1",
+      name: "NestCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:nest:1",
+          name: "color/brand/primary",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const result = convertCollectionToModeNamedGroups(collection);
+    const group = result[collection.name] as unknown as Record<
+      string,
+      Record<string, Record<string, { $value: unknown }>>
+    >;
+
+    expect(group.color.brand.primary.$value).toBeDefined();
+  });
+
+  it("同一親パスを持つ複数変数は同じ Group に集約される", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:nest:2",
+      name: "NestSiblingCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:nest:2a",
+          name: "color/brand/primary",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:nest:2b",
+          name: "color/brand/secondary",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 0, g: 1, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const result = convertCollectionToModeNamedGroups(collection);
+    const group = result[collection.name] as unknown as Record<
+      string,
+      Record<string, Record<string, unknown>>
+    >;
+
+    expect(Object.keys(group.color.brand).sort()).toEqual([
+      "primary",
+      "secondary",
+    ]);
+  });
+
+  it("(a) 既存の葉と衝突する中間パスは Group 化され duplicate warning が記録される", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:nest:3",
+      name: "NestConflictCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:nest:3a",
+          name: "color",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:nest:3b",
+          name: "color/brand",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 0, g: 0, b: 1, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings = createWarningCollector();
+    const result = convertCollectionToModeNamedGroups(collection, warnings);
+
+    const group = result[collection.name] as unknown as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(group.color.brand).toBeDefined();
+
+    expect(warnings.items.filter((w) => w.kind === "duplicate")).toHaveLength(
+      1,
+    );
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it("(b) 既存の Group と同じ位置に葉トークンを挿入しようとすると、Group が優先され duplicate warning が記録される", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:nest:4",
+      name: "NestConflictReverseCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:nest:4a",
+          name: "color/brand",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 0, g: 0, b: 1, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:nest:4b",
+          name: "color",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings = createWarningCollector();
+    const result = convertCollectionToModeNamedGroups(collection, warnings);
+
+    const group = result[collection.name] as unknown as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(group.color.brand).toBeDefined();
+
+    expect(warnings.items.filter((w) => w.kind === "duplicate")).toHaveLength(
+      1,
+    );
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it("複数 mode で構造衝突がある場合、warning は mode 数分記録される", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:nest:5",
+      name: "NestConflictMultiModeCollection",
+      defaultModeId: "mode-a",
+      modes: [
+        { modeId: "mode-a", name: "light" },
+        { modeId: "mode-b", name: "dark" },
+      ],
+      variables: [
+        {
+          id: "VariableID:nest:5a",
+          name: "color",
+          resolvedType: "COLOR",
+          valuesByMode: {
+            "mode-a": { r: 1, g: 1, b: 1, a: 1 },
+            "mode-b": { r: 0, g: 0, b: 0, a: 1 },
+          },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:nest:5b",
+          name: "color/brand",
+          resolvedType: "COLOR",
+          valuesByMode: {
+            "mode-a": { r: 0.5, g: 0.5, b: 0.5, a: 1 },
+            "mode-b": { r: 0.2, g: 0.2, b: 0.2, a: 1 },
+          },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings = createWarningCollector();
+    convertCollectionToModeNamedGroups(collection, warnings);
+
+    expect(warnings.items.filter((w) => w.kind === "duplicate")).toHaveLength(
+      2,
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("変数名 `$description/x` は `description.x` になり、Group メタの `$description` と衝突しない", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:nest:6",
+      name: "MetaCollisionCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:nest:6",
+          name: "$description/x",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const result = convertCollectionToModeNamedGroups(collection);
+    const group = result[collection.name];
+
+    expect(typeof group.$description).toBe("string");
+    const nested = group.description as unknown as Record<
+      string,
+      { $value: unknown }
+    >;
+    expect(nested.x.$value).toBeDefined();
+  });
 });
