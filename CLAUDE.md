@@ -32,6 +32,8 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 5. `getTextStyles()` / `getPaintStyles(variableNameMap)` / `getEffectStyles()` でスタイル系を変換
 6. すべてを配列でまとめて UI へ送る（`falsy` は filter で除外）
 
+`main()` の冒頭で `createWarningCollector()`（`src/warnings.ts`）を生成し、上記1〜5の各関数にオプション引数として渡す。変換に失敗した Variable/Style は1件単位でスキップされ、collector に記録された `warnings.items` は `postMessage` の data に含めて UI へ渡され、ZIP内 `_export-warnings.json` として出力される。
+
 ### Group 命名規則（`src/converts/util.ts: makeGroupName`）
 - mode が1つ: `collection名`
 - mode が複数: `${collection名}${Capitalize(mode名)}`（例: `MyCollection` + `dark` → `MyCollectionDark`）

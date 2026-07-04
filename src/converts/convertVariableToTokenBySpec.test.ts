@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertVariableToTokenBySpec } from "./convertVariableToTokenBySpec";
+import { createWarningCollector } from "../warnings";
 import {
   mockColorVariable,
   mockFloatFontWeightVariable,
@@ -79,5 +80,35 @@ describe("convertVariableToTokenBySpec", () => {
     const token = convertVariableToTokenBySpec(mockTextVariable, modeId);
 
     expect(token).toBeNull();
+  });
+
+  describe("変換が例外を投げるケース", () => {
+    let errorSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+    });
+
+    it("valuesByMode に該当 modeId が無い場合、null を返し warnings に error として記録する", () => {
+      const warnings = createWarningCollector();
+      const token = convertVariableToTokenBySpec(
+        mockColorVariable,
+        "modeId-that-does-not-exist",
+        warnings,
+      );
+
+      expect(token).toBeNull();
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({
+        severity: "error",
+        kind: "variable-convert",
+      });
+      expect(warnings.items[0].source).toContain(mockColorVariable.name);
+      expect(errorSpy).toHaveBeenCalled();
+    });
   });
 });

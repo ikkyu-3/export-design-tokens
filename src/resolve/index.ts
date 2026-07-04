@@ -1,6 +1,7 @@
 import { FigmaCollectionData } from "../collections";
 import { VariableNameMap } from "./createVariableNameMap";
 import { cloneObject, isAliasValue } from "../converts/util";
+import { WarningCollector } from "../warnings";
 
 /**
  * 全コレクションを対象に VARIABLE_ALIAS を ID 参照から名前（パス）参照へ解決する。
@@ -8,6 +9,7 @@ import { cloneObject, isAliasValue } from "../converts/util";
 export function resolveAliasesForAllCollections(
   collections: FigmaCollectionData[],
   nameMap: VariableNameMap,
+  warnings?: WarningCollector,
 ): FigmaCollectionData[] {
   const clonedCollections = cloneObject(collections);
   if (!clonedCollections) {
@@ -22,9 +24,14 @@ export function resolveAliasesForAllCollections(
 
         const variableName = nameMap.get(value.id);
         if (!variableName) {
-          console.warn(
-            `[alias-resolve] nameByMode not found variable id="${value.id}" at mode="${modeId}" (source="${variable.name}")`,
-          );
+          const message = `[alias-resolve] nameByMode not found variable id="${value.id}" at mode="${modeId}" (source="${variable.name}")`;
+          console.warn(message);
+          warnings?.add({
+            severity: "warning",
+            kind: "alias-resolve",
+            source: `Variable: ${variable.name} (mode: ${modeId})`,
+            message,
+          });
           return;
         }
 

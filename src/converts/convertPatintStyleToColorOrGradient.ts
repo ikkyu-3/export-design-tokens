@@ -6,6 +6,7 @@ import {
   GradientValue,
 } from "../types/token";
 import { VariableNameMap } from "../resolve/createVariableNameMap";
+import { WarningCollector } from "../warnings";
 
 export type PaintStyleToken = ColorToken | GradientToken;
 type PluginBoundVariables = {
@@ -40,6 +41,7 @@ function extractColorAlias(
 export function convertPaintStyleToTokens(
   paintStyle: FigmaColorStyle,
   variableNameMap: VariableNameMap,
+  warnings?: WarningCollector,
 ): Record<string, PaintStyleToken> {
   const tokens: Record<string, PaintStyleToken> = {};
 
@@ -59,6 +61,8 @@ export function convertPaintStyleToTokens(
       paint,
       description: paintStyle.description,
       variableNameMap,
+      source: `PaintStyle: ${paintStyle.name}`,
+      warnings,
     });
   });
 
@@ -71,6 +75,8 @@ export function convertPaintStyleToTokens(
       paint,
       description: paintStyle.description,
       variableNameMap,
+      source: `PaintStyle: ${paintStyle.name}`,
+      warnings,
     });
   });
 
@@ -81,11 +87,15 @@ interface ConvertSolidToColorTokenProps {
   paint: SolidPaint;
   description: string;
   variableNameMap: VariableNameMap;
+  source: string;
+  warnings?: WarningCollector;
 }
 function convertSolidToColorToken({
   paint,
   description,
   variableNameMap,
+  source,
+  warnings,
 }: ConvertSolidToColorTokenProps): ColorToken {
   const base = { $description: description };
 
@@ -100,9 +110,14 @@ function convertSolidToColorToken({
         $value: `{${variableName.defaultName}}`,
       };
     } else {
-      console.warn(
-        `[paintStyle] Variable ID not found: ${alias.id}, using color value as fallback`,
-      );
+      const message = `[paintStyle] Variable ID not found: ${alias.id}, using color value as fallback`;
+      console.warn(message);
+      warnings?.add({
+        severity: "warning",
+        kind: "alias-resolve",
+        source,
+        message,
+      });
     }
   }
 
@@ -127,11 +142,15 @@ interface ConvertGradientToGradientTokenProps {
   paint: GradientPaint;
   description: string;
   variableNameMap: VariableNameMap;
+  source: string;
+  warnings?: WarningCollector;
 }
 function convertGradientToGradientToken({
   paint,
   description,
   variableNameMap,
+  source,
+  warnings,
 }: ConvertGradientToGradientTokenProps): GradientToken {
   const base = { $description: description };
 
@@ -146,9 +165,14 @@ function convertGradientToGradientToken({
           position: stop.position,
         };
       } else {
-        console.warn(
-          `[paintStyle] Variable ID not found: ${alias.id}, using color value as fallback`,
-        );
+        const message = `[paintStyle] Variable ID not found: ${alias.id}, using color value as fallback`;
+        console.warn(message);
+        warnings?.add({
+          severity: "warning",
+          kind: "alias-resolve",
+          source,
+          message,
+        });
       }
     }
 

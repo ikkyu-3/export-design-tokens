@@ -4,7 +4,14 @@
     try {
       const zip = new JSZip();
 
-      const { collections } = data;
+      const { collections, warnings } = data;
+
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        zip.file(
+          "_export-warnings.json",
+          JSON.stringify({ warnings }, null, 2),
+        );
+      }
 
       for (const group of collections) {
         const groupKeys = Object.keys(group);
