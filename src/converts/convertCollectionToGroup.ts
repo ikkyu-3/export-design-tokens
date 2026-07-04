@@ -4,6 +4,7 @@ import { convertVariableToTokenBySpec } from "./convertVariableToTokenBySpec";
 import type { TokenOfType } from "../types/token";
 import type { AllTokenTypes } from "../types/common";
 import { makeGroupName } from "./util";
+import { WarningCollector } from "../warnings";
 
 type GroupMeta = Pick<
   Group,
@@ -20,12 +21,13 @@ function buildGroupForMode(
   collection: FigmaCollectionData,
   modeId: string,
   description: string,
+  warnings?: WarningCollector,
 ): Group {
   const meta: GroupMeta = { $description: description };
   const entries: GroupEntries = {};
 
   for (const variable of collection.variables) {
-    const token = convertVariableToTokenBySpec(variable, modeId);
+    const token = convertVariableToTokenBySpec(variable, modeId, warnings);
     if (token) {
       entries[variable.name] = token;
     }
@@ -44,6 +46,7 @@ function buildGroupForMode(
  */
 export function convertCollectionToModeNamedGroups(
   collection: FigmaCollectionData,
+  warnings?: WarningCollector,
 ): Record<string, Group> {
   const modes = collection.modes;
   if (modes.length === 0) {
@@ -59,7 +62,12 @@ export function convertCollectionToModeNamedGroups(
       ? `Collection: ${collection.name} | Mode: ${mode.name}`
       : `Collection: ${collection.name}`;
 
-    result[groupName] = buildGroupForMode(collection, mode.modeId, description);
+    result[groupName] = buildGroupForMode(
+      collection,
+      mode.modeId,
+      description,
+      warnings,
+    );
   }
 
   return result;

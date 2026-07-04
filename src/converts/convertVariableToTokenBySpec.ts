@@ -14,10 +14,12 @@ import {
   isFloatFigmaVariable,
   isTextFigmaVariable,
 } from "./util";
+import { WarningCollector } from "../warnings";
 
 export function convertVariableToTokenBySpec(
   variable: TypedFigmaVariable,
   modeId: string,
+  warnings?: WarningCollector,
 ): TokenOfType<AllTokenTypes> | null {
   const { scopes } = variable;
 
@@ -54,6 +56,12 @@ export function convertVariableToTokenBySpec(
     return null;
   } catch (e) {
     console.error(e);
+    warnings?.add({
+      severity: "error",
+      kind: "variable-convert",
+      source: `Variable: ${variable.name} (mode: ${modeId})`,
+      message: String(e),
+    });
     return null;
   }
 }
