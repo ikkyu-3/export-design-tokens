@@ -152,4 +152,119 @@ describe("convertCollectionToModeNamedGroups", () => {
 
     warnSpy.mockRestore();
   });
+
+  it("変数名が命名制約に違反する場合、entry のキーはサニタイズされる（無警告）", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:sanitize:1",
+      name: "SanitizeCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:sanitize:1",
+          name: "color.primary",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const result = convertCollectionToModeNamedGroups(collection);
+    const group = result[collection.name];
+    const entryKeys = Object.keys(group).filter((k) => !k.startsWith("$"));
+    expect(entryKeys).toEqual(["color-primary"]);
+  });
+
+  it("collection 名が命名制約に違反する場合（単一 mode）、トップレベルキーはサニタイズされる", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:sanitize:2",
+      name: "my.col",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:sanitize:2",
+          name: "tokenA",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const result = convertCollectionToModeNamedGroups(collection);
+    expect(Object.keys(result)).toEqual(["my-col"]);
+  });
+
+  it("無警告設計: collector を渡してもサニタイズによる name-sanitize warning は記録されない", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:sanitize:3",
+      name: "my.col",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:sanitize:3",
+          name: "color.primary",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnings = createWarningCollector();
+    convertCollectionToModeNamedGroups(collection, warnings);
+
+    expect(warnings.items.filter((w) => w.kind === "name-sanitize")).toEqual(
+      [],
+    );
+  });
+
+  it("サニタイズ由来の新規衝突: 変数 a.b と a-b が同一 collection にある場合、entries は1件（後勝ち）に集約され duplicate warning が1件記録される", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:sanitize:4",
+      name: "CollisionCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:sanitize:4a",
+          name: "a.b",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:sanitize:4b",
+          name: "a-b",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 0, g: 0, b: 1, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings = createWarningCollector();
+    const result = convertCollectionToModeNamedGroups(collection, warnings);
+
+    const group = result[collection.name];
+    const entryKeys = Object.keys(group).filter((k) => !k.startsWith("$"));
+    expect(entryKeys).toEqual(["a-b"]);
+
+    expect(warnings.items).toHaveLength(1);
+    expect(warnings.items[0]).toMatchObject({
+      severity: "warning",
+      kind: "duplicate",
+    });
+
+    warnSpy.mockRestore();
+  });
 });

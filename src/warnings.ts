@@ -5,7 +5,8 @@ export interface ExportWarning {
     | "style-convert"
     | "alias-resolve"
     | "name-map"
-    | "duplicate";
+    | "duplicate"
+    | "name-sanitize";
   source: string;
   message: string;
 }

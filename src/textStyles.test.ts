@@ -89,4 +89,26 @@ describe("convertTextStylesToTypography", () => {
 
     warnSpy.mockRestore();
   });
+
+  it("命名制約に違反する TextStyle 名はサニタイズされ、name-sanitize warning が1件記録される", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const dottedStyle: FigmaTextStyle = {
+      ...mockTextStyles[0],
+      name: "heading.large",
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertTextStylesToTypography([dottedStyle], warnings);
+
+    expect(Object.keys(result)).toEqual(["heading-large"]);
+
+    const sanitizeWarnings = warnings.items.filter(
+      (w) => w.kind === "name-sanitize",
+    );
+    expect(sanitizeWarnings).toHaveLength(1);
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
 });
