@@ -3,12 +3,14 @@ import { ShadowToken } from "./types/token";
 import { FigmaEffectStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
 import { assignTokensWithDuplicateWarning } from "./duplicates";
+import { createNameSanitizer, sanitizeRecordKeys } from "./sanitize";
 
 export function convertEffectStylesToShadows(
   effectStyles: FigmaEffectStyle[],
   warnings?: WarningCollector,
 ): Record<string, ShadowToken> {
   const shadowTokens: Record<string, ShadowToken> = {};
+  const sanitizer = createNameSanitizer(warnings);
 
   for (const effectStyle of effectStyles) {
     try {
@@ -16,7 +18,11 @@ export function convertEffectStylesToShadows(
       if (token) {
         assignTokensWithDuplicateWarning(
           shadowTokens,
-          token,
+          sanitizeRecordKeys(
+            token,
+            sanitizer,
+            `EffectStyle: ${effectStyle.name}`,
+          ),
           `EffectStyle: ${effectStyle.name}`,
           warnings,
         );

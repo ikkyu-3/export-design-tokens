@@ -163,4 +163,78 @@ describe("convertPaintStylesToTokens", () => {
     });
     expect(warnSpy).toHaveBeenCalled();
   });
+
+  it("命名制約に違反する単一 SOLID の PaintStyle 名はサニタイズされ、warning が1件記録される", () => {
+    const paintStyles: FigmaColorStyle[] = [
+      {
+        id: "style-6",
+        name: "brand.red",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 1, g: 0, b: 0 },
+            boundVariables: {},
+          },
+        ],
+      },
+    ];
+
+    const emptyMap = createVariableNameMap([]);
+    const warnings = createWarningCollector();
+    const tokens = convertPaintStylesToTokens(paintStyles, emptyMap, warnings);
+
+    expect(Object.keys(tokens)).toEqual(["brand-red"]);
+
+    const sanitizeWarnings = warnings.items.filter(
+      (w) => w.kind === "name-sanitize",
+    );
+    expect(sanitizeWarnings).toHaveLength(1);
+  });
+
+  it("命名制約に違反する複数 SOLID の PaintStyle 名は、出力キーごとにサニタイズされ warning が2件記録される", () => {
+    const paintStyles: FigmaColorStyle[] = [
+      {
+        id: "style-7",
+        name: "multi.red",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 1, g: 0, b: 0 },
+            boundVariables: {},
+          },
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 0, g: 1, b: 0 },
+            boundVariables: {},
+          },
+        ],
+      },
+    ];
+
+    const emptyMap = createVariableNameMap([]);
+    const warnings = createWarningCollector();
+    const tokens = convertPaintStylesToTokens(paintStyles, emptyMap, warnings);
+
+    expect(Object.keys(tokens).sort()).toEqual(
+      ["multi-red-color-0", "multi-red-color-1"].sort(),
+    );
+
+    const sanitizeWarnings = warnings.items.filter(
+      (w) => w.kind === "name-sanitize",
+    );
+    expect(sanitizeWarnings).toHaveLength(2);
+  });
 });

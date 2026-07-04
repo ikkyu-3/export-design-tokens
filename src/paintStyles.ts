@@ -6,6 +6,7 @@ import { VariableNameMap } from "./resolve/createVariableNameMap";
 import { FigmaColorStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
 import { assignTokensWithDuplicateWarning } from "./duplicates";
+import { createNameSanitizer, sanitizeRecordKeys } from "./sanitize";
 
 export function convertPaintStylesToTokens(
   paintStyles: FigmaColorStyle[],
@@ -13,6 +14,7 @@ export function convertPaintStylesToTokens(
   warnings?: WarningCollector,
 ): Record<string, PaintStyleToken> {
   const paintStylesData: Record<string, PaintStyleToken> = {};
+  const sanitizer = createNameSanitizer(warnings);
 
   for (const style of paintStyles) {
     try {
@@ -23,7 +25,7 @@ export function convertPaintStylesToTokens(
       );
       assignTokensWithDuplicateWarning(
         paintStylesData,
-        tokens,
+        sanitizeRecordKeys(tokens, sanitizer, `PaintStyle: ${style.name}`),
         `PaintStyle: ${style.name}`,
         warnings,
       );

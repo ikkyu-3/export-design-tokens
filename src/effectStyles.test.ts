@@ -100,4 +100,25 @@ describe("convertEffectStylesToShadows", () => {
 
     warnSpy.mockRestore();
   });
+
+  it("命名制約に違反する EffectStyle 名はサニタイズされ、warning が1件記録される", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const dottedStyle: FigmaEffectStyle = {
+      ...mockEffectStyles[0],
+      name: "shadow.soft",
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertEffectStylesToShadows([dottedStyle], warnings);
+
+    expect(Object.keys(result)).toEqual(["shadow-soft"]);
+
+    const sanitizeWarnings = warnings.items.filter(
+      (w) => w.kind === "name-sanitize",
+    );
+    expect(sanitizeWarnings).toHaveLength(1);
+
+    warnSpy.mockRestore();
+  });
 });

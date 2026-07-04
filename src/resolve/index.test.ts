@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { FigmaCollectionData } from "../collections";
 import { resolveAliasesForAllCollections } from "./index";
 import { createVariableNameMap } from "./createVariableNameMap";
+import { convertCollectionToModeNamedGroups } from "../converts/convertCollectionToGroup";
+import { createWarningCollector } from "../warnings";
+import { ColorToken } from "../types/token";
 
 describe("resolveAliasesForAllCollections", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -221,5 +224,62 @@ describe("resolveAliasesForAllCollections", () => {
 
     const resolved = result[0].variables[1].valuesByMode.m1 as VariableAlias;
     expect(resolved.id).toBe("Single.t");
+  });
+
+  it("サニタイズ後の Group名/変数名で alias 参照とトップレベルキーが一致する（参照整合性の統合テスト）", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-brand",
+        name: "brand.colors",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-primary",
+            name: "color.primary",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "var-primary-alias",
+            name: "primaryAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "mode-1": { type: "VARIABLE_ALIAS", id: "var-primary" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const resolved = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+    const groups = resolved.map((c) =>
+      convertCollectionToModeNamedGroups(c, warnings),
+    );
+
+    const topLevelKeys = Object.keys(groups[0]);
+    expect(topLevelKeys).toEqual(["brand-colors"]);
+
+    const group = groups[0]["brand-colors"];
+    expect(Object.keys(group)).toContain("color-primary");
+
+    const aliasToken = group["primaryAlias"] as ColorToken;
+    expect(aliasToken.$value).toBe(`{${topLevelKeys[0]}.color-primary}`);
+    expect(aliasToken.$value).toBe("{brand-colors.color-primary}");
+
+    const sanitizeWarnings = warnings.items.filter(
+      (w) => w.kind === "name-sanitize",
+    );
+    expect(sanitizeWarnings).toHaveLength(2);
   });
 });

@@ -1,6 +1,7 @@
 import { FigmaCollectionData } from "../collections";
 import { makeGroupName } from "../converts/util";
 import { WarningCollector } from "../warnings";
+import { createNameSanitizer } from "../sanitize";
 
 type VariableId = string;
 type ModeId = string;
@@ -19,6 +20,7 @@ export function createVariableNameMap(
   warnings?: WarningCollector,
 ) {
   const variableNameMap = new Map<VariableId, VariableNameValue>();
+  const sanitizer = createNameSanitizer(warnings);
 
   collections.forEach((col) => {
     const modes = col.modes ?? [];
@@ -40,8 +42,16 @@ export function createVariableNameMap(
       const entry: Record<ModeId, VariableName> = {};
 
       modes.forEach((mode) => {
-        const groupName = makeGroupName(col.name, mode.name, multiple);
-        entry[mode.modeId] = `${groupName}.${v.name}`;
+        const rawGroupName = makeGroupName(col.name, mode.name, multiple);
+        const groupName = sanitizer.sanitize(
+          rawGroupName,
+          `Group: ${rawGroupName} (collection: ${col.name})`,
+        );
+        const tokenName = sanitizer.sanitize(
+          v.name,
+          `Variable: ${v.name} (collection: ${col.name})`,
+        );
+        entry[mode.modeId] = `${groupName}.${tokenName}`;
       });
 
       const defaultName = entry[col.defaultModeId];
