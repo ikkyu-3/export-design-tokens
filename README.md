@@ -19,7 +19,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 
 ## 変換に失敗した場合の挙動（警告の集約）
 - Variable / Text Style / Paint Style / Effect Style は、変換に失敗しても1件単位でスキップされ、エクスポート全体は継続します
-- 発生した警告・エラーは集約され、ZIP内に `_export-warnings.json` として出力されます（`severity` / `kind` / `source` / `message` を持つ配列）
+- 発生した警告・エラーは集約され、ZIP内に `_export-warnings.json` として出力されます（`{ "warnings": [...] }` 形式。各要素は `severity` / `kind` / `source` / `message` を持ちます）
 - エクスポート完了時のトーストに警告件数が表示されます（例: 「エクスポートが完了しました（警告 2 件 / 詳細は ZIP 内の _export-warnings.json を確認してください）」）
 - 警告が無い場合は「エクスポートが完了しました」のみ表示されます
 

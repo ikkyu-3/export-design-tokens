@@ -24,7 +24,7 @@ export function resolveAliasesForAllCollections(
 
         const variableName = nameMap.get(value.id);
         if (!variableName) {
-          const message = `[alias-resolve] nameByMode not found variable id="${value.id}" at mode="${modeId}" (source="${variable.name}")`;
+          const message = `[alias-resolve] variable name not found for id="${value.id}" at mode="${modeId}" (source="${variable.name}")`;
           console.warn(message);
           warnings?.add({
             severity: "warning",

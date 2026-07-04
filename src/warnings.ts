@@ -12,8 +12,8 @@ export function createWarningCollector() {
     add(warning: ExportWarning) {
       items.push(warning);
     },
-    get items(): ExportWarning[] {
-      return items;
+    get items(): ReadonlyArray<ExportWarning> {
+      return [...items];
     },
   };
 }
