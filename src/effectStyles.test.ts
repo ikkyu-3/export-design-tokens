@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { convertEffectStylesToShadows } from "./effectStyles";
 import { createWarningCollector } from "./warnings";
 import { effectStyles as mockEffectStyles } from "../mocks/effectStyles";
+import { FigmaEffectStyle } from "./types/figma";
 import { ShadowObjectValue } from "./types/token";
 
 describe("convertEffectStylesToShadows", () => {
@@ -48,5 +49,55 @@ describe("convertEffectStylesToShadows", () => {
 
     expect(result).toEqual({});
     expect(warnings.items).toEqual([]);
+  });
+
+  it("同名の EffectStyle が複数ある場合、1件に集約され duplicate warning が記録される", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const firstStyle: FigmaEffectStyle = {
+      ...mockEffectStyles[0],
+      name: "duplicated",
+    };
+    const secondStyle: FigmaEffectStyle = {
+      id: "S:duplicated-2,",
+      name: "duplicated",
+      description: "",
+      type: "EFFECT",
+      effects: [
+        {
+          type: "DROP_SHADOW",
+          visible: true,
+          radius: 8,
+          boundVariables: {},
+          color: { r: 0, g: 0, b: 0, a: 0.25 },
+          offset: { x: 0, y: 8 },
+          spread: 0,
+          blendMode: "NORMAL",
+          showShadowBehindNode: false,
+        },
+      ],
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertEffectStylesToShadows(
+      [firstStyle, secondStyle],
+      warnings,
+    );
+
+    expect(Object.keys(result)).toEqual(["duplicated"]);
+    expect((result["duplicated"].$value as ShadowObjectValue).blur).toEqual({
+      value: 8,
+      unit: "px",
+    });
+
+    expect(warnings.items).toHaveLength(1);
+    expect(warnings.items[0]).toMatchObject({
+      severity: "warning",
+      kind: "duplicate",
+      source: "EffectStyle: duplicated",
+    });
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
   });
 });

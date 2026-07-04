@@ -2,6 +2,7 @@ import { convertEffectStyleToShadow } from "./converts/convertEffectStyleToShado
 import { ShadowToken } from "./types/token";
 import { FigmaEffectStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
+import { assignTokensWithDuplicateWarning } from "./duplicates";
 
 export function convertEffectStylesToShadows(
   effectStyles: FigmaEffectStyle[],
@@ -13,7 +14,12 @@ export function convertEffectStylesToShadows(
     try {
       const token = convertEffectStyleToShadow(effectStyle);
       if (token) {
-        Object.assign(shadowTokens, token);
+        assignTokensWithDuplicateWarning(
+          shadowTokens,
+          token,
+          `EffectStyle: ${effectStyle.name}`,
+          warnings,
+        );
       }
     } catch (e) {
       console.error(e);

@@ -5,6 +5,7 @@ import type { TokenOfType } from "../types/token";
 import type { AllTokenTypes } from "../types/common";
 import { makeGroupName } from "./util";
 import { WarningCollector } from "../warnings";
+import { setTokenWithDuplicateWarning } from "../duplicates";
 
 type GroupMeta = Pick<
   Group,
@@ -29,7 +30,13 @@ function buildGroupForMode(
   for (const variable of collection.variables) {
     const token = convertVariableToTokenBySpec(variable, modeId, warnings);
     if (token) {
-      entries[variable.name] = token;
+      setTokenWithDuplicateWarning<GroupEntries[string]>(
+        entries,
+        variable.name,
+        token,
+        `Variable: ${variable.name} (collection: ${collection.name}, mode: ${modeId})`,
+        warnings,
+      );
     }
   }
 
@@ -62,10 +69,11 @@ export function convertCollectionToModeNamedGroups(
       ? `Collection: ${collection.name} | Mode: ${mode.name}`
       : `Collection: ${collection.name}`;
 
-    result[groupName] = buildGroupForMode(
-      collection,
-      mode.modeId,
-      description,
+    setTokenWithDuplicateWarning(
+      result,
+      groupName,
+      buildGroupForMode(collection, mode.modeId, description, warnings),
+      `Collection: ${collection.name} (mode: ${mode.name})`,
       warnings,
     );
   }

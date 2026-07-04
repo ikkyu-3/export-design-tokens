@@ -2,6 +2,7 @@ import { convertTextStyleToTypography } from "./converts/convertTextStyleToTypog
 import { TypographyToken } from "./types/token";
 import { FigmaTextStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
+import { assignTokensWithDuplicateWarning } from "./duplicates";
 
 export function convertTextStylesToTypography(
   textStyles: FigmaTextStyle[],
@@ -11,7 +12,12 @@ export function convertTextStylesToTypography(
 
   for (const textStyle of textStyles) {
     try {
-      Object.assign(typography, convertTextStyleToTypography(textStyle));
+      assignTokensWithDuplicateWarning(
+        typography,
+        convertTextStyleToTypography(textStyle),
+        `TextStyle: ${textStyle.name}`,
+        warnings,
+      );
     } catch (e) {
       console.error(e);
       warnings?.add({

@@ -1,6 +1,11 @@
 export interface ExportWarning {
   severity: "error" | "warning";
-  kind: "variable-convert" | "style-convert" | "alias-resolve" | "name-map";
+  kind:
+    | "variable-convert"
+    | "style-convert"
+    | "alias-resolve"
+    | "name-map"
+    | "duplicate";
   source: string;
   message: string;
 }
