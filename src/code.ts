@@ -6,6 +6,7 @@ import { resolveAliasesForAllCollections } from "./resolve";
 import { getPaintStyles } from "./paintStyles";
 import { createVariableNameMap } from "./resolve/createVariableNameMap";
 import { createWarningCollector } from "./warnings";
+import { findDuplicateFileNames } from "./duplicates";
 
 figma.showUI(__html__, { width: 280, height: 80, visible: false });
 
@@ -53,12 +54,28 @@ async function main() {
     console.log("========== get effectStyles ==========");
     const effectStyles = await getEffectStyles(warnings);
 
+    const collectionsData = [
+      ...groups,
+      typography,
+      paintStyles,
+      effectStyles,
+    ].filter(Boolean);
+
+    for (const { name, count } of findDuplicateFileNames(collectionsData)) {
+      const message = `出力ファイル名 "${name}.json" が ${count} 件の出力で重複しています。ZIP 内では最後の 1 件で上書きされます。`;
+      console.warn(message);
+      warnings.add({
+        severity: "warning",
+        kind: "duplicate",
+        source: `File: ${name}.json`,
+        message,
+      });
+    }
+
     figma.ui.postMessage({
       type: "download-zip",
       data: {
-        collections: [...groups, typography, paintStyles, effectStyles].filter(
-          Boolean,
-        ),
+        collections: collectionsData,
         warnings: warnings.items,
       },
     });

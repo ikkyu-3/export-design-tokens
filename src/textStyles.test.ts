@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertTextStylesToTypography } from "./textStyles";
 import { createWarningCollector } from "./warnings";
 import { FigmaTextStyle } from "./types/figma";
+import { DimensionValue, TypographyValue } from "./types/token";
 import { textStyles as mockTextStyles } from "../mocks/textStyles";
 
 describe("convertTextStylesToTypography", () => {
@@ -52,5 +53,40 @@ describe("convertTextStylesToTypography", () => {
       source: "TextStyle: broken",
     });
     expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it("同名の TextStyle が複数ある場合、結果は1件（後勝ち）に集約され duplicate warning が記録される", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const duplicatedStyle: FigmaTextStyle = {
+      ...mockTextStyles[0],
+      name: "duplicated",
+      fontSize: 20,
+    };
+    const duplicatedStyleOverride: FigmaTextStyle = {
+      ...mockTextStyles[0],
+      name: "duplicated",
+      fontSize: 24,
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertTextStylesToTypography(
+      [duplicatedStyle, duplicatedStyleOverride],
+      warnings,
+    );
+
+    expect(Object.keys(result)).toEqual(["duplicated"]);
+    const value = result["duplicated"].$value as TypographyValue;
+    expect((value.fontSize as DimensionValue).value).toBe(24);
+
+    expect(warnings.items).toHaveLength(1);
+    expect(warnings.items[0]).toMatchObject({
+      severity: "warning",
+      kind: "duplicate",
+      source: "TextStyle: duplicated",
+    });
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
   });
 });

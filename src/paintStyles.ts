@@ -5,6 +5,7 @@ import {
 import { VariableNameMap } from "./resolve/createVariableNameMap";
 import { FigmaColorStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
+import { assignTokensWithDuplicateWarning } from "./duplicates";
 
 export function convertPaintStylesToTokens(
   paintStyles: FigmaColorStyle[],
@@ -20,7 +21,12 @@ export function convertPaintStylesToTokens(
         variableNameMap,
         warnings,
       );
-      Object.assign(paintStylesData, tokens);
+      assignTokensWithDuplicateWarning(
+        paintStylesData,
+        tokens,
+        `PaintStyle: ${style.name}`,
+        warnings,
+      );
     } catch (e) {
       console.error(e);
       warnings?.add({

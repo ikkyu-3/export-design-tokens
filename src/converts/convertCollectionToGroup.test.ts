@@ -1,10 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   mockFlatModeCollectionData,
   mockMultiModeCollectionData,
 } from "../../mocks/variables";
 import { convertCollectionToModeNamedGroups } from "./convertCollectionToGroup";
 import { capitalize } from "./util";
+import { createWarningCollector } from "../warnings";
+import { FigmaCollectionData } from "../collections";
 
 describe("convertCollectionToModeNamedGroups", () => {
   it("単一 mode の場合、キーは collection 名になる", () => {
@@ -52,5 +54,102 @@ describe("convertCollectionToModeNamedGroups", () => {
 
     const result = convertCollectionToModeNamedGroups(noModes);
     expect(result).toEqual({});
+  });
+
+  it("同一 collection 内に同名の variable が複数ある場合（単一 mode）、entries は1件に集約され duplicate warning が1件記録される", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:dup:1",
+      name: "dupCollection",
+      defaultModeId: "mode-1",
+      modes: [{ modeId: "mode-1", name: "Mode 1" }],
+      variables: [
+        {
+          id: "VariableID:dup:1",
+          name: "duplicated",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 1, g: 0, b: 0, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:dup:2",
+          name: "duplicated",
+          resolvedType: "COLOR",
+          valuesByMode: { "mode-1": { r: 0, g: 0, b: 1, a: 1 } },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings = createWarningCollector();
+    const result = convertCollectionToModeNamedGroups(collection, warnings);
+
+    const group = result[collection.name];
+    const entryKeys = Object.keys(group).filter((k) => !k.startsWith("$"));
+    expect(entryKeys).toEqual(["duplicated"]);
+
+    expect(warnings.items).toHaveLength(1);
+    expect(warnings.items[0]).toMatchObject({
+      severity: "warning",
+      kind: "duplicate",
+    });
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it("複数 mode（2 modes）で同名 variable が2件ある場合、mode 毎に warning が出るため2件記録される（仕様）", () => {
+    const collection: FigmaCollectionData = {
+      id: "VariableCollectionId:dup:2",
+      name: "dupMultiModeCollection",
+      defaultModeId: "mode-a",
+      modes: [
+        { modeId: "mode-a", name: "light" },
+        { modeId: "mode-b", name: "dark" },
+      ],
+      variables: [
+        {
+          id: "VariableID:dup:3",
+          name: "duplicated",
+          resolvedType: "COLOR",
+          valuesByMode: {
+            "mode-a": { r: 1, g: 1, b: 1, a: 1 },
+            "mode-b": { r: 0, g: 0, b: 0, a: 1 },
+          },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+        {
+          id: "VariableID:dup:4",
+          name: "duplicated",
+          resolvedType: "COLOR",
+          valuesByMode: {
+            "mode-a": { r: 0.5, g: 0.5, b: 0.5, a: 1 },
+            "mode-b": { r: 0.2, g: 0.2, b: 0.2, a: 1 },
+          },
+          description: "",
+          scopes: ["ALL_SCOPES"],
+        },
+      ],
+    };
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings = createWarningCollector();
+    const result = convertCollectionToModeNamedGroups(collection, warnings);
+
+    expect(Object.keys(result).sort()).toEqual(
+      collection.modes
+        .map((m) => `${collection.name}${capitalize(m.name)}`)
+        .sort(),
+    );
+
+    // buildGroupForMode は mode ごとに独立した entries を持つため、
+    // 同名 variable の重複は mode の数だけ warning が記録される。
+    expect(warnings.items).toHaveLength(2);
+    expect(warnings.items.every((w) => w.kind === "duplicate")).toBe(true);
+
+    warnSpy.mockRestore();
   });
 });
