@@ -9,7 +9,7 @@ export function setTokenWithDuplicateWarning<T>(
   warnings?: WarningCollector,
 ): void {
   if (Object.prototype.hasOwnProperty.call(target, key)) {
-    const message = `トークン名 "${key}" が重複しています。後から変換された定義で上書きされます。`;
+    const message = `キー "${key}" が重複しています（${source}）。後勝ちで上書きされます。`;
     console.warn(message);
     warnings?.add({ severity: "warning", kind: "duplicate", source, message });
   }
