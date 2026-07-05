@@ -1,27 +1,23 @@
 import { convertTextStyleToTypography } from "./converts/convertTextStyleToTypography";
 import { TypographyToken } from "./types/token";
+import { TokenTree } from "./types/group";
 import { FigmaTextStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
-import { assignTokensWithDuplicateWarning } from "./duplicates";
-import { createNameSanitizer, sanitizeRecordKeys } from "./sanitize";
+import { createNameSanitizer, nestRecordTokens } from "./sanitize";
 
 export function convertTextStylesToTypography(
   textStyles: FigmaTextStyle[],
   warnings?: WarningCollector,
-): Record<string, TypographyToken> {
-  const typography: Record<string, TypographyToken> = {};
+): TokenTree<TypographyToken> {
+  const typography: TokenTree<TypographyToken> = {};
   const sanitizer = createNameSanitizer(warnings);
 
   for (const textStyle of textStyles) {
     try {
-      assignTokensWithDuplicateWarning(
+      nestRecordTokens(
         typography,
-        sanitizeRecordKeys(
-          convertTextStyleToTypography(textStyle),
-          sanitizer,
-          `TextStyle: ${textStyle.name}`,
-          warnings,
-        ),
+        convertTextStyleToTypography(textStyle),
+        sanitizer,
         `TextStyle: ${textStyle.name}`,
         warnings,
       );

@@ -13,6 +13,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 - Text Styles を Typography トークンとして出力
 - Paint Styles を Color/Gradient トークンとして出力
 - Effect Styles を Shadow トークンとして出力
+- Variable / Text Style / Paint Style / Effect Style の名前に含まれる `/` 区切りは、ネストしたGroup構造に再構築されます（例: `color/brand/primary` → `{ color: { brand: { primary: <token> } } }`）
 
 ## 処理の流れ
 - プラグイン実行 → ローカル変数/スタイルを取得 → エイリアス解決 → JSON生成 → ZIPでダウンロード
@@ -93,6 +94,7 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
 
 - 単数：PaintStyle の name をそのまま使用
 - 複数：`{name}-color-{index}` または `{name}-gradient-{index}` で命名（0始まり）
+- name に `/` が含まれる場合、`/` 区切りの部分はネストしたGroupに変換されます（例: `brand/red` の複数塗りは `{ brand: { "red-color-0": ..., "red-color-1": ... } }` のように、suffixは葉のキー名に残ります）
 
 ### 非対応タイプ
 
@@ -122,6 +124,8 @@ Effect Styles は `shadow` トークンに変換されます。
 - modeごとに1 Group（フラットなトークン集合）
 - Group名は makeGroupName の規則に従います
 - Group内に各Tokenが格納されます（必要に応じてネスト可）
+- Variable/Style名の `/` 区切りはネストしたGroupとして再構築されます（参照パスも `{GroupName.color.brand.primary}` のように `.` 区切りのネストパスになります）
+- 衝突規則: ネスト構築中にGroup（枝）とToken（葉）が同じキーで衝突した場合、Group（枝）がToken（葉）に勝ちます（葉は破棄され警告が記録されます）。葉同士が衝突した場合は後勝ちで上書きされます（`kind: "duplicate"` の警告として記録）
 
 ## ロードマップ
 - [x] local variables

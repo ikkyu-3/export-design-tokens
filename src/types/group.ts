@@ -21,3 +21,6 @@ interface GroupProperties extends CommonProperties {
 export type Group = GroupProperties & {
   [K: string]: GroupItem;
 };
+
+/** トークン T を葉とする再帰ネスト構造（スタイル系出力用） */
+export type TokenTree<T> = { [key: string]: T | TokenTree<T> };

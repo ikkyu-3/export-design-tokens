@@ -254,4 +254,188 @@ describe("createVariableNameMap", () => {
       "DollarCollection.unnamed",
     );
   });
+
+  it("`/` 区切りの変数名は参照パスで `.` 区切りに変換される（単一 mode）", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-nest",
+        name: "NestCollection",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-nested",
+            name: "color/brand/primary",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 1, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const map = createVariableNameMap(collections);
+
+    expect(map.get("var-nested")?.defaultName).toBe(
+      "NestCollection.color.brand.primary",
+    );
+  });
+
+  it("`/` 区切りの変数名は複数 mode それぞれで `.` 区切りの参照パスになる", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-nest-multi",
+        name: "NestMultiCollection",
+        defaultModeId: "dark-id",
+        modes: [
+          { modeId: "light-id", name: "light" },
+          { modeId: "dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-nested",
+            name: "color/brand/primary",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "light-id": { r: 1, g: 1, b: 1, a: 1 },
+              "dark-id": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const map = createVariableNameMap(collections);
+    const entry = map.get("var-nested");
+
+    expect(entry?.modes["light-id"]).toBe(
+      "NestMultiCollectionLight.color.brand.primary",
+    );
+    expect(entry?.modes["dark-id"]).toBe(
+      "NestMultiCollectionDark.color.brand.primary",
+    );
+  });
+
+  it("segment 内に命名制約違反がある場合、その segment だけサニタイズされ warning が1件記録される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-nest-sanitize",
+        name: "NestSanitizeCollection",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-nested-sanitize",
+            name: "color/a.b",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 1, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const map = createVariableNameMap(collections, warnings);
+
+    expect(map.get("var-nested-sanitize")?.defaultName).toBe(
+      "NestSanitizeCollection.color.a-b",
+    );
+
+    const sanitizeWarnings = warnings.items.filter(
+      (w) => w.kind === "name-sanitize",
+    );
+    expect(sanitizeWarnings).toHaveLength(1);
+  });
+
+  it("`/` のみの変数名は unnamed の連なりになり、空 segment の sanitize warning が1件（dedup）記録される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-slash-only",
+        name: "SlashOnlyCollection",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-slash-only",
+            name: "/",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 1, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const map = createVariableNameMap(collections, warnings);
+
+    expect(map.get("var-slash-only")?.defaultName).toBe(
+      "SlashOnlyCollection.unnamed.unnamed",
+    );
+    // 両 segment とも空文字→"unnamed" の同一 (source, segment) なので dedup により1件のみ記録される
+    expect(
+      warnings.items.filter((w) => w.kind === "name-sanitize"),
+    ).toHaveLength(1);
+  });
+
+  it("`/` 区切り自体は違反ではないため、合法な segment のみで構成される変数名は warning 0件になる", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-slash-legal",
+        name: "SlashLegalCollection",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-slash-legal",
+            name: "color/brand/primary",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 1, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    createVariableNameMap(collections, warnings);
+
+    expect(
+      warnings.items.filter((w) => w.kind === "name-sanitize"),
+    ).toHaveLength(0);
+  });
+
+  it("連続する `/`（空 segment）を含む変数名は unnamed segment を挟んで参照パスになる", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-double-slash",
+        name: "DoubleSlashCollection",
+        defaultModeId: "mode-1",
+        modes: [{ modeId: "mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-double-slash",
+            name: "a//b",
+            resolvedType: "COLOR",
+            valuesByMode: { "mode-1": { r: 1, g: 1, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const map = createVariableNameMap(collections);
+
+    expect(map.get("var-double-slash")?.defaultName).toBe(
+      "DoubleSlashCollection.a.unnamed.b",
+    );
+  });
 });

@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertTextStylesToTypography } from "./textStyles";
 import { createWarningCollector } from "./warnings";
 import { FigmaTextStyle } from "./types/figma";
-import { DimensionValue, TypographyValue } from "./types/token";
+import {
+  DimensionValue,
+  TypographyToken,
+  TypographyValue,
+} from "./types/token";
 import { textStyles as mockTextStyles } from "../mocks/textStyles";
 
 describe("convertTextStylesToTypography", () => {
@@ -76,7 +80,8 @@ describe("convertTextStylesToTypography", () => {
     );
 
     expect(Object.keys(result)).toEqual(["duplicated"]);
-    const value = result["duplicated"].$value as TypographyValue;
+    const value = (result["duplicated"] as TypographyToken)
+      .$value as TypographyValue;
     expect((value.fontSize as DimensionValue).value).toBe(24);
 
     expect(warnings.items).toHaveLength(1);
@@ -110,5 +115,21 @@ describe("convertTextStylesToTypography", () => {
     expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();
+  });
+
+  it("`/` 区切りの TextStyle 名はネスト Group になる（`Heading/H1` → `result.Heading.H1`）", () => {
+    const nestedStyle: FigmaTextStyle = {
+      ...mockTextStyles[0],
+      name: "Heading/H1",
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertTextStylesToTypography([nestedStyle], warnings);
+
+    const heading = result["Heading"] as unknown as Record<
+      string,
+      TypographyToken
+    >;
+    expect(heading.H1.$value).toBeDefined();
   });
 });

@@ -5,8 +5,8 @@ import type { TokenOfType } from "../types/token";
 import type { AllTokenTypes } from "../types/common";
 import { makeGroupName } from "./util";
 import { WarningCollector } from "../warnings";
-import { setTokenWithDuplicateWarning } from "../duplicates";
-import { sanitizeTokenName } from "../sanitize";
+import { setTokenWithDuplicateWarning, setTokenAtPath } from "../duplicates";
+import { sanitizeTokenName, toTokenPath } from "../sanitize";
 
 type GroupMeta = Pick<
   Group,
@@ -31,10 +31,10 @@ function buildGroupForMode(
   for (const variable of collection.variables) {
     const token = convertVariableToTokenBySpec(variable, modeId, warnings);
     if (token) {
-      // sanitize 警告は createVariableNameMap 側で記録済みのため、ここでは無警告で適用する
-      setTokenWithDuplicateWarning<GroupEntries[string]>(
+      // sanitize 警告は createVariableNameMap 側で記録済みのため、無警告の toTokenPath を使う
+      setTokenAtPath(
         entries,
-        sanitizeTokenName(variable.name),
+        toTokenPath(variable.name),
         token,
         `Variable: ${variable.name} (collection: ${collection.name}, mode: ${modeId})`,
         warnings,

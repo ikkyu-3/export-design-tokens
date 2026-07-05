@@ -41,15 +41,16 @@ export function createVariableNameMap(
     col.variables.forEach((v) => {
       const entry: Record<ModeId, VariableName> = {};
 
+      // path 導出は mode 非依存なのでループ外へ
+      const tokenName = sanitizer
+        .sanitizePath(v.name, `Variable: ${v.name} (collection: ${col.name})`)
+        .join(".");
+
       modes.forEach((mode) => {
         const rawGroupName = makeGroupName(col.name, mode.name, multiple);
         const groupName = sanitizer.sanitize(
           rawGroupName,
           `Group: ${rawGroupName} (collection: ${col.name})`,
-        );
-        const tokenName = sanitizer.sanitize(
-          v.name,
-          `Variable: ${v.name} (collection: ${col.name})`,
         );
         entry[mode.modeId] = `${groupName}.${tokenName}`;
       });

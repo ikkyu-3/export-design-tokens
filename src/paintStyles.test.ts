@@ -237,4 +237,66 @@ describe("convertPaintStylesToTokens", () => {
     );
     expect(sanitizeWarnings).toHaveLength(2);
   });
+
+  it("`/` 区切りの単一 SOLID の PaintStyle 名はネスト Group になる（`brand/primary` → `result.brand.primary`）", () => {
+    const paintStyles: FigmaColorStyle[] = [
+      {
+        id: "style-8",
+        name: "brand/primary",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 1, g: 0, b: 0 },
+            boundVariables: {},
+          },
+        ],
+      },
+    ];
+
+    const emptyMap = createVariableNameMap([]);
+    const tokens = convertPaintStylesToTokens(paintStyles, emptyMap);
+
+    const brand = tokens["brand"] as unknown as Record<string, ColorToken>;
+    expect(brand.primary.$type).toBe("color");
+  });
+
+  it('`/` 区切りの複数 SOLID の PaintStyle 名は、suffix 付きキーのまま葉としてネストされる（`brand/red` → `result.brand["red-color-0"]`/`["red-color-1"]`）', () => {
+    const paintStyles: FigmaColorStyle[] = [
+      {
+        id: "style-9",
+        name: "brand/red",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 1, g: 0, b: 0 },
+            boundVariables: {},
+          },
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 0, g: 1, b: 0 },
+            boundVariables: {},
+          },
+        ],
+      },
+    ];
+
+    const emptyMap = createVariableNameMap([]);
+    const tokens = convertPaintStylesToTokens(paintStyles, emptyMap);
+
+    const brand = tokens["brand"] as unknown as Record<string, ColorToken>;
+    expect(Object.keys(brand).sort()).toEqual(["red-color-0", "red-color-1"]);
+  });
 });
