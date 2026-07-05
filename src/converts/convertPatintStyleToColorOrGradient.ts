@@ -194,7 +194,8 @@ function convertGradientToGradientToken({
 
   const gradientStops: GradientValue = paint.gradientStops.map((stop) => {
     const alias = extractColorAlias(stop.boundVariables);
-    // NOTE: `paint.opacity ?? 1` が 1 のときのみエイリアス有効。それ以外は焼き込み + paint-opacity 警告。
+    // NOTE: `paint.opacity ?? 1` が 1 のときのみ stop のエイリアスを参照として採用する。
+    // それ以外は下部で RGBA を焼き込む（paint-opacity 警告は上部で 1 paint につき最大1件記録済み）。
     if (paintOpacity === 1 && alias) {
       const variableName = variableNameMap.get(alias.id);
       if (variableName) {
