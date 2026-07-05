@@ -30,7 +30,7 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 
 | Figma resolvedType | scope 条件 | 出力 token 種別 | 備考                                   |
 |---|---|---|--------------------------------------|
-| COLOR | scopesが設定されていること | color | 値がエイリアスなら参照文字列（`{path.to.token}`）に変換 |
+| COLOR | scopesが設定されていること | color | 値がエイリアスなら参照文字列（`{path.to.token}`）に変換。alpha が 1 の場合はキーを省略（DTCG 既定値 1） |
 | FLOAT | scopes に `ALL_SCOPES` または `OPACITY` を含む | number | 不透明度や一般数値として扱いたい場合                   |
 | FLOAT | 上記以外（例: `WIDTH_HEIGHT`, `GAP`, `FONT_SIZE` など） | dimension | 単位は `"px"` として出力                     |
 | FLOAT | `["FONT_WEIGHT"]` | fontWeight | 数値のフォントウェイト（例: `400`）                |
@@ -87,7 +87,7 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
 - boundVariables に color エイリアスがある場合：
   - `paint.opacity`（未指定時は 1）が 1 のときのみエイリアス参照を使用（`{GroupName.tokenName}`）
   - `paint.opacity` が 1 以外の場合はエイリアス参照を破棄し、RGB 値に `paint.opacity` を `alpha` として焼き込んで出力する。このとき `kind: "paint-opacity"` の警告が `_export-warnings.json` に記録される（Figma 側で opacity を 1 に戻すと参照が保持される）
-- boundVariables がない場合は RGB 値に `paint.opacity`（未指定時は 1）を `alpha` として付与して出力
+- boundVariables がない場合は RGB 値に `paint.opacity`（未指定時は 1）を `alpha` として付与して出力（alpha が 1 の場合はキー省略）
 
 ### GRADIENT_LINEAR Paint → Gradient Token
 
@@ -96,7 +96,7 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
   - boundVariables に color エイリアスがある場合：
     - `paint.opacity`（未指定時は 1）が 1 の場合のみエイリアス参照を使用
     - `paint.opacity` が 1 以外の場合は各停止点の透明度にペイント全体の透明度を掛け合わせてRGB(A)値として焼き込む
-  - RGB(A) 値の場合は同様に透明度を適用
+  - RGB(A) 値の場合は同様に透明度を適用（掛け合わせた結果が 1 の場合は alpha キー省略）
   - opacity が 1 以外で焼き込みが発生し、かつ color エイリアスを持つ stop が1つ以上ある場合、`kind: "paint-opacity"` の警告が `_export-warnings.json` に記録される（1 paint につき最大1件）
 
 ### 命名規則
@@ -118,7 +118,7 @@ Effect Styles は `shadow` トークンに変換されます。
 
 | プロパティ | 変換ルール |
 |---|---|
-| color | RGBA値を変換 |
+| color | RGBA値を変換（a が 1 の場合は alpha キー省略） |
 | offsetX | `offset.x` を `{ value: number, unit: "px" }` 形式で出力 |
 | offsetY | `offset.y` を `{ value: number, unit: "px" }` 形式で出力 |
 | blur | `radius` を `{ value: number, unit: "px" }` 形式で出力 |

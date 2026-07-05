@@ -1,5 +1,5 @@
 import { TypedFigmaVariable } from "../collections";
-import { FontWeightValue } from "../types/token";
+import { ColorValue, FontWeightValue } from "../types/token";
 import type { ResolvedVariableAlias } from "../resolve/resolvedAlias";
 
 export function capitalize(str: string): string {
@@ -138,4 +138,23 @@ export function roundTo2ndDecimal(value: number): number {
   const scaled = Math.fround(value * 100);
   const rounded = Math.round(scaled);
   return rounded / 100;
+}
+
+/**
+ * ColorValue を構築する共有ヘルパー（issue #21）。
+ * DTCG の Color モジュールでは alpha の既定値が 1 のため、
+ * a === 1（厳密比較）のときは alpha キー自体を省略する。
+ * a ≠ 1 の値は丸めず、そのまま alpha として出力する（0 も出力される）。
+ */
+export function makeColorValue(
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+): ColorValue {
+  const value: ColorValue = { colorSpace: "srgb", components: [r, g, b] };
+  if (a !== 1) {
+    value.alpha = a;
+  }
+  return value;
 }
