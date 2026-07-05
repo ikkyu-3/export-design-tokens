@@ -8,8 +8,11 @@ declare const resolvedAliasBrand: unique symbol;
  * （例: "GroupName.tokenName"）へ書き換え済みであることを型で表す branded type。
  *
  * - 実行時表現は VariableAlias と完全に同一（brand プロパティは実在しない）
- * - resolvedAliasBrand は export しないため、キャスト無しにこの型の値を
- *   作れるのは resolve 層（このファイルの getResolvedValue）だけ
+ * - resolvedAliasBrand は module-private（非 export）のため、明示キャスト無しに
+ *   この型を生成できるのはこのファイル内（＝ getResolvedValue 内の唯一の cast）だけ。
+ *   getResolvedValue 自体は export され convert 層から呼ばれるが、呼び出し側は
+ *   resolve 済みの variable を渡す責務を負う。他所でこの型を得るには明示的な
+ *   `as ResolvedVariableAlias` が必要で、grep で監査できる
  * - toTokenReference（src/converts/util.ts）はこの型のみを受け付け、
  *   未 resolve の VariableAlias を渡すとコンパイルエラーになる（issue #26）
  */
