@@ -46,13 +46,13 @@ async function main() {
     );
 
     console.log("========== get textStyles ==========");
-    const typography = await getTextStyles(warnings);
+    const typography = await getTextStyles(variableNameMap, warnings);
 
     console.log("========== get paintStyles ==========");
     const paintStyles = await getPaintStyles(variableNameMap, warnings);
 
     console.log("========== get effectStyles ==========");
-    const effectStyles = await getEffectStyles(warnings);
+    const effectStyles = await getEffectStyles(variableNameMap, warnings);
 
     const collectionsData = [
       ...groups,

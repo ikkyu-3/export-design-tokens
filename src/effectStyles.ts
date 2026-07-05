@@ -4,9 +4,11 @@ import { TokenTree } from "./types/group";
 import { FigmaEffectStyle } from "./types/figma";
 import { WarningCollector } from "./warnings";
 import { createNameSanitizer, nestRecordTokens } from "./sanitize";
+import { VariableNameMap } from "./resolve/createVariableNameMap";
 
 export function convertEffectStylesToShadows(
   effectStyles: FigmaEffectStyle[],
+  variableNameMap: VariableNameMap,
   warnings?: WarningCollector,
 ): TokenTree<ShadowToken> {
   const shadowTokens: TokenTree<ShadowToken> = {};
@@ -14,7 +16,11 @@ export function convertEffectStylesToShadows(
 
   for (const effectStyle of effectStyles) {
     try {
-      const token = convertEffectStyleToShadow(effectStyle);
+      const token = convertEffectStyleToShadow(
+        effectStyle,
+        variableNameMap,
+        warnings,
+      );
       if (token) {
         nestRecordTokens(
           shadowTokens,
@@ -38,11 +44,18 @@ export function convertEffectStylesToShadows(
   return shadowTokens;
 }
 
-export async function getEffectStyles(warnings?: WarningCollector) {
+export async function getEffectStyles(
+  variableNameMap: VariableNameMap,
+  warnings?: WarningCollector,
+) {
   const effectStyles = await figma.getLocalEffectStylesAsync();
   console.log(`✨ Found ${effectStyles.length} effect styles`);
 
-  const shadowTokens = convertEffectStylesToShadows(effectStyles, warnings);
+  const shadowTokens = convertEffectStylesToShadows(
+    effectStyles,
+    variableNameMap,
+    warnings,
+  );
 
   if (Object.keys(shadowTokens).length === 0) {
     return null;

@@ -1,7 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertTextStyleToTypography } from "./convertTextStyleToTypography";
 import { FigmaTextStyle } from "../types/figma";
-import { TypographyValue } from "../types/token";
+import { DimensionValue, TypographyValue } from "../types/token";
+import { createVariableNameMap } from "../resolve/createVariableNameMap";
+import { createWarningCollector } from "../warnings";
+import type { FigmaCollectionData } from "../collections";
 
 describe("convertTextStyleToTypography", () => {
   it("基本的な TextStyle を Typography トークンに変換する", () => {
@@ -24,7 +27,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const typography = result[textStyle.name];
     const value = typography.$value as TypographyValue;
     expect(typography.$type).toBe("typography");
@@ -56,7 +59,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     expect(result[textStyle.name].$description).toBe(
       "本文用のテキストスタイル",
     );
@@ -82,7 +85,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const value = result[textStyle.name].$value as TypographyValue;
     expect(value.fontWeight).toBe(700);
   });
@@ -107,7 +110,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.5);
@@ -133,7 +136,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.2);
@@ -159,7 +162,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.5);
@@ -185,7 +188,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.lineHeight).toBe(1.5);
@@ -211,7 +214,7 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    const result = convertTextStyleToTypography(textStyle);
+    const result = convertTextStyleToTypography(textStyle, new Map());
     const value = result[textStyle.name].$value as TypographyValue;
 
     expect(value.letterSpacing).toEqual({ value: 0.8, unit: "px" });
@@ -237,7 +240,9 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    expect(() => convertTextStyleToTypography(textStyle)).toThrow(TypeError);
+    expect(() => convertTextStyleToTypography(textStyle, new Map())).toThrow(
+      TypeError,
+    );
   });
 
   it("fontSize が 0 の場合は TypeError を投げる", () => {
@@ -260,6 +265,301 @@ describe("convertTextStyleToTypography", () => {
       hangingList: false,
     };
 
-    expect(() => convertTextStyleToTypography(textStyle)).toThrow(TypeError);
+    expect(() => convertTextStyleToTypography(textStyle, new Map())).toThrow(
+      TypeError,
+    );
+  });
+
+  describe("boundVariables の参照化", () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    const typoCollection: FigmaCollectionData[] = [
+      {
+        id: "VariableCollectionId:1:1",
+        name: "Typo",
+        defaultModeId: "1:0",
+        modes: [{ modeId: "1:0", name: "Mode 1" }],
+        variables: [
+          {
+            id: "VariableID:1:1",
+            name: "size",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 20 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:1:2",
+            name: "family",
+            resolvedType: "STRING",
+            valuesByMode: { "1:0": "Roboto" },
+            description: "",
+            scopes: ["FONT_FAMILY"],
+          },
+          {
+            id: "VariableID:1:3",
+            name: "tracking",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 1 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:1:4",
+            name: "leading",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 1.5 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:1:5",
+            name: "weight",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 700 },
+            description: "",
+            scopes: ["FONT_WEIGHT"],
+          },
+          {
+            id: "VariableID:1:6",
+            name: "styleName",
+            resolvedType: "STRING",
+            valuesByMode: { "1:0": "italic" },
+            description: "",
+            scopes: ["FONT_STYLE"],
+          },
+        ],
+      },
+    ];
+
+    function makeTextStyle(
+      overrides: Partial<FigmaTextStyle> = {},
+    ): FigmaTextStyle {
+      return {
+        id: "style-bound-1",
+        name: "Bound",
+        description: "",
+        type: "TEXT",
+        fontSize: 16,
+        fontName: { family: "Inter", style: "Regular" },
+        textCase: "ORIGINAL",
+        textDecoration: "NONE",
+        letterSpacing: { unit: "PERCENT", value: 0 },
+        lineHeight: { unit: "PERCENT", value: 150 },
+        leadingTrim: "NONE",
+        paragraphIndent: 0,
+        paragraphSpacing: 0,
+        listSpacing: 0,
+        hangingPunctuation: false,
+        hangingList: false,
+        ...overrides,
+      };
+    }
+
+    it("fontSize が bound の場合、fontSize は参照になり他は計算値のまま", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontSize: { type: "VARIABLE_ALIAS", id: "VariableID:1:1" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontSize).toBe("{Typo.size}");
+      expect(value.fontFamily).toBe("Inter");
+      expect(value.fontWeight).toBe(400);
+      expect(value.letterSpacing).toEqual({ value: 0, unit: "px" });
+      expect(value.lineHeight).toBe(1.5);
+    });
+
+    it("fontFamily が bound の場合、参照になる", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontFamily: { type: "VARIABLE_ALIAS", id: "VariableID:1:2" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontFamily).toBe("{Typo.family}");
+    });
+
+    it("letterSpacing が bound の場合、参照になる", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          letterSpacing: { type: "VARIABLE_ALIAS", id: "VariableID:1:3" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.letterSpacing).toBe("{Typo.tracking}");
+    });
+
+    it("lineHeight が bound の場合、PIXELS/Infinity でも throw せず参照になる（計算スキップ）", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        lineHeight: { unit: "PIXELS", value: Infinity },
+        boundVariables: {
+          lineHeight: { type: "VARIABLE_ALIAS", id: "VariableID:1:4" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.lineHeight).toBe("{Typo.leading}");
+    });
+
+    it("fontWeight のみ bound の場合、参照になる", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontWeight: { type: "VARIABLE_ALIAS", id: "VariableID:1:5" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontWeight).toBe("{Typo.weight}");
+    });
+
+    it("fontStyle のみ bound の場合、fontWeight として参照になる", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontStyle: { type: "VARIABLE_ALIAS", id: "VariableID:1:6" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontWeight).toBe("{Typo.styleName}");
+    });
+
+    it("fontWeight と fontStyle の両方が bound の場合、fontWeight を優先する", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontWeight: { type: "VARIABLE_ALIAS", id: "VariableID:1:5" },
+          fontStyle: { type: "VARIABLE_ALIAS", id: "VariableID:1:6" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontWeight).toBe("{Typo.weight}");
+    });
+
+    it("fontWeight bound が map miss の場合、fontStyle bound にフォールバックし alias-resolve 警告が1件記録される", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const warnings = createWarningCollector();
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontWeight: { type: "VARIABLE_ALIAS", id: "VariableID:999:999" },
+          fontStyle: { type: "VARIABLE_ALIAS", id: "VariableID:1:6" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(
+        textStyle,
+        variableNameMap,
+        warnings,
+      );
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontWeight).toBe("{Typo.styleName}");
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({
+        severity: "warning",
+        kind: "alias-resolve",
+      });
+    });
+
+    it("fontSize bound が map miss の場合、計算値にフォールバックし warnings が1件記録される", () => {
+      const warnings = createWarningCollector();
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          fontSize: { type: "VARIABLE_ALIAS", id: "VariableID:999:999" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(
+        textStyle,
+        new Map(),
+        warnings,
+      );
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontSize).toEqual({ value: 16, unit: "px" });
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({
+        severity: "warning",
+        kind: "alias-resolve",
+        source: "TextStyle: Bound",
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Variable ID not found"),
+      );
+    });
+
+    it("fontSize が bound、letterSpacing(PERCENT) が非 bound の場合、letterSpacing の計算には生の fontSize を使う", () => {
+      const variableNameMap = createVariableNameMap(typoCollection);
+      const textStyle = makeTextStyle({
+        fontSize: 16,
+        letterSpacing: { unit: "PERCENT", value: 5 },
+        boundVariables: {
+          fontSize: { type: "VARIABLE_ALIAS", id: "VariableID:1:1" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(textStyle, variableNameMap);
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontSize).toBe("{Typo.size}");
+      expect(value.letterSpacing as DimensionValue).toEqual({
+        value: 0.8,
+        unit: "px",
+      });
+    });
+
+    it("paragraphSpacing/paragraphIndent の bound は無視される（出力・警告とも無変化）", () => {
+      const warnings = createWarningCollector();
+      const textStyle = makeTextStyle({
+        boundVariables: {
+          paragraphSpacing: { type: "VARIABLE_ALIAS", id: "VariableID:1:1" },
+          paragraphIndent: { type: "VARIABLE_ALIAS", id: "VariableID:1:1" },
+        },
+      });
+
+      const result = convertTextStyleToTypography(
+        textStyle,
+        new Map(),
+        warnings,
+      );
+      const value = result[textStyle.name].$value as TypographyValue;
+
+      expect(value.fontFamily).toBe("Inter");
+      expect(value.fontWeight).toBe(400);
+      expect(value.fontSize).toEqual({ value: 16, unit: "px" });
+      expect(warnings.items).toEqual([]);
+    });
   });
 });

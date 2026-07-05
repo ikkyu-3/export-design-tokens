@@ -23,6 +23,7 @@ export type FigmaTextStyle = Pick<
   | "listSpacing"
   | "hangingPunctuation"
   | "hangingList"
+  | "boundVariables"
 >;
 
 export type FigmaColorStyle = Pick<
