@@ -77,8 +77,8 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
 
 - SOLID タイプのペイントを `color` トークンに変換
 - boundVariables に color エイリアスがある場合：
-  - `paint.opacity` の値に関係なく、常にエイリアス参照を使用（`{GroupName.tokenName}`）
-  - 注意: SOLID では `paint.opacity` を反映した値ではなく、参照先 Variable の色そのものが採用される
+  - `paint.opacity`（未指定時は 1）が 1 のときのみエイリアス参照を使用（`{GroupName.tokenName}`）
+  - `paint.opacity` が 1 以外の場合はエイリアス参照を破棄し、RGB 値に `paint.opacity` を `alpha` として焼き込んで出力する。このとき `kind: "paint-opacity"` の警告が `_export-warnings.json` に記録される（Figma 側で opacity を 1 に戻すと参照が保持される）
 - boundVariables がない場合は RGB 値に `paint.opacity`（未指定時は 1）を `alpha` として付与して出力
 
 ### GRADIENT_LINEAR Paint → Gradient Token
@@ -86,9 +86,10 @@ Paint Styles は `color` または `gradient` トークンに変換されます�
 - GRADIENT_LINEAR タイプのペイントを `gradient` トークンに変換
 - 各 gradientStop の色を以下のルールで処理：
   - boundVariables に color エイリアスがある場合：
-    - `paint.opacity === 1` の場合のみエイリアス参照を使用
-    - `paint.opacity !== 1` の場合は各停止点の透明度にペイント全体の透明度を掛け合わせ
+    - `paint.opacity`（未指定時は 1）が 1 の場合のみエイリアス参照を使用
+    - `paint.opacity` が 1 以外の場合は各停止点の透明度にペイント全体の透明度を掛け合わせてRGB(A)値として焼き込む
   - RGB(A) 値の場合は同様に透明度を適用
+  - opacity が 1 以外で焼き込みが発生し、かつ color エイリアスを持つ stop が1つ以上ある場合、`kind: "paint-opacity"` の警告が `_export-warnings.json` に記録される（1 paint につき最大1件）
 
 ### 命名規則
 

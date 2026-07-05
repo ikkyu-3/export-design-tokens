@@ -6,7 +6,8 @@ export interface ExportWarning {
     | "alias-resolve"
     | "name-map"
     | "duplicate"
-    | "name-sanitize";
+    | "name-sanitize"
+    | "paint-opacity";
   source: string;
   message: string;
 }

@@ -25,6 +25,29 @@ function extractColorAlias(
   return alias.type === "VARIABLE_ALIAS" ? alias : null;
 }
 
+interface WarnPaintOpacityBakeProps {
+  opacity: number;
+  source: string;
+  warnings?: WarningCollector;
+}
+/**
+ * opacity !== 1 のため Variable 参照を破棄して RGBA を焼き込んだ場合の警告
+ */
+function warnPaintOpacityBake({
+  opacity,
+  source,
+  warnings,
+}: WarnPaintOpacityBakeProps): void {
+  const message = `ペイントの opacity が ${opacity} のため、Variable 参照を破棄して RGBA 値を焼き込みました（${source}）。Figma 側で opacity を 1 にすると参照が保持されます。`;
+  console.warn(message);
+  warnings?.add({
+    severity: "warning",
+    kind: "paint-opacity",
+    source,
+    message,
+  });
+}
+
 /**
  * PaintStyle を Color/Gradient トークンに変換する
  * - SOLID → ColorToken
@@ -98,37 +121,42 @@ function convertSolidToColorToken({
   warnings,
 }: ConvertSolidToColorTokenProps): ColorToken {
   const base = { $description: description };
+  const paintOpacity = paint.opacity ?? 1;
 
   // boundVariables から color のエイリアスを取得
   const alias = extractColorAlias(paint.boundVariables);
   if (alias) {
-    const variableName = variableNameMap.get(alias.id);
-    if (variableName) {
-      return {
-        ...base,
-        $type: "color",
-        $value: `{${variableName.defaultName}}`,
-      };
+    if (paintOpacity === 1) {
+      const variableName = variableNameMap.get(alias.id);
+      if (variableName) {
+        return {
+          ...base,
+          $type: "color",
+          $value: `{${variableName.defaultName}}`,
+        };
+      } else {
+        const message = `[paintStyle] Variable ID not found: ${alias.id}, using color value as fallback`;
+        console.warn(message);
+        warnings?.add({
+          severity: "warning",
+          kind: "alias-resolve",
+          source,
+          message,
+        });
+      }
     } else {
-      const message = `[paintStyle] Variable ID not found: ${alias.id}, using color value as fallback`;
-      console.warn(message);
-      warnings?.add({
-        severity: "warning",
-        kind: "alias-resolve",
-        source,
-        message,
-      });
+      // opacity !== 1 の場合は参照を破棄して値焼き込みへフォールスルー
+      warnPaintOpacityBake({ opacity: paintOpacity, source, warnings });
     }
   }
 
-  // 通常のカラー値（エイリアス未解決の場合もここに含まれる）
+  // 通常のカラー値（エイリアス未解決 or opacity 焼き込みの場合もここに含まれる）
   const { r, g, b } = paint.color;
-  const alpha = paint.opacity ?? 1;
 
   const colorValue: ColorValue = {
     colorSpace: "srgb",
     components: [r, g, b],
-    alpha,
+    alpha: paintOpacity,
   };
 
   return {
@@ -153,11 +181,22 @@ function convertGradientToGradientToken({
   warnings,
 }: ConvertGradientToGradientTokenProps): GradientToken {
   const base = { $description: description };
+  const paintOpacity = paint.opacity ?? 1;
+
+  // opacity !== 1 で焼き込みが発生する場合、エイリアスを持つ stop が1つでもあれば
+  // 1 paint につき最大1件の警告を出す（stop ごとには出さない）
+  const hasAliasStop = paint.gradientStops.some(
+    (stop) => extractColorAlias(stop.boundVariables) !== null,
+  );
+  if (paintOpacity !== 1 && hasAliasStop) {
+    warnPaintOpacityBake({ opacity: paintOpacity, source, warnings });
+  }
 
   const gradientStops: GradientValue = paint.gradientStops.map((stop) => {
     const alias = extractColorAlias(stop.boundVariables);
-    // NOTE: Figmaではグラデーション全体の透明度の上書きができるため、1の時のみエイリアスを有効とします。
-    if (paint.opacity === 1 && alias) {
+    // NOTE: `paint.opacity ?? 1` が 1 のときのみ stop のエイリアスを参照として採用する。
+    // それ以外は下部で RGBA を焼き込む（paint-opacity 警告は上部で 1 paint につき最大1件記録済み）。
+    if (paintOpacity === 1 && alias) {
       const variableName = variableNameMap.get(alias.id);
       if (variableName) {
         return {
@@ -181,7 +220,7 @@ function convertGradientToGradientToken({
       colorSpace: "srgb",
       components: [r, g, b],
       // グラデーション全体の透明度が調整されている
-      alpha: a * (paint.opacity ?? 1),
+      alpha: a * paintOpacity,
     };
 
     return {
