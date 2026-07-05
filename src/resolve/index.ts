@@ -35,7 +35,30 @@ export function resolveAliasesForAllCollections(
           return;
         }
 
-        value.id = variableName.defaultName;
+        const sourceModeName = col.modes.find((m) => m.modeId === modeId)?.name;
+        const matched =
+          sourceModeName !== undefined
+            ? variableName.modesByName.get(sourceModeName)
+            : undefined;
+
+        if (matched === undefined && variableName.modesByName.size > 1) {
+          const targetModeNames = [...variableName.modesByName.keys()].join(
+            ", ",
+          );
+          const message =
+            sourceModeName === undefined
+              ? `[alias-resolve] 参照元モード ID "${modeId}" がコレクション "${col.name}" に見つからないため、デフォルトモードの "${variableName.defaultName}" にフォールバックします（参照先のモード: ${targetModeNames}）`
+              : `[alias-resolve] 参照元モード "${sourceModeName}" に一致するモードが参照先にないため、デフォルトモードの "${variableName.defaultName}" にフォールバックします（参照先のモード: ${targetModeNames}）`;
+          console.warn(message);
+          warnings?.add({
+            severity: "warning",
+            kind: "alias-resolve",
+            source: `Variable: ${variable.name} (mode: ${sourceModeName ?? modeId})`,
+            message,
+          });
+        }
+
+        value.id = matched ?? variableName.defaultName;
         variable.valuesByMode[modeId] = value;
       });
     });

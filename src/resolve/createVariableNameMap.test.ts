@@ -48,8 +48,10 @@ describe("createVariableNameMap", () => {
     const b = map.get("var-b");
     expect(a?.defaultName).toBe("SingleModeCollection.tokenA");
     expect(a?.modes["mode-1"]).toBe("SingleModeCollection.tokenA");
+    expect(a?.modesByName.get("Mode 1")).toBe("SingleModeCollection.tokenA");
     expect(b?.defaultName).toBe("SingleModeCollection.tokenB");
     expect(b?.modes["mode-1"]).toBe("SingleModeCollection.tokenB");
+    expect(b?.modesByName.get("Mode 1")).toBe("SingleModeCollection.tokenB");
   });
 
   it("複数モードのコレクションでは groupName は collection名_mode名 になり、defaultModeId の名前が defaultName に使われる", () => {
@@ -85,6 +87,8 @@ describe("createVariableNameMap", () => {
     expect(x?.defaultName).toBe("MultiModeCollectionDark.tokenX");
     expect(x?.modes["light-id"]).toBe("MultiModeCollectionLight.tokenX");
     expect(x?.modes["dark-id"]).toBe("MultiModeCollectionDark.tokenX");
+    expect(x?.modesByName.get("light")).toBe("MultiModeCollectionLight.tokenX");
+    expect(x?.modesByName.get("dark")).toBe("MultiModeCollectionDark.tokenX");
   });
 
   it("modes が空のコレクションは警告してスキップされる", () => {

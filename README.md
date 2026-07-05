@@ -119,6 +119,8 @@ Effect Styles は `shadow` トークンに変換されます。
 ## エイリアス（Alias）
 - FigmaのエイリアスはID参照ですが、出力時は `{GroupName.TokenName}` 形式に解決します
 - GroupNameは makeGroupName に基づく命名規則（単一: collection名、複数: collection名 + Capitalize(mode名)）で決定されます
+- 複数モードを持つコレクションへの参照は、参照元と**同名のモード**（大文字小文字を区別する完全一致）の Group に解決されます
+- 一致するモード名が無い場合は参照先の defaultMode の Group にフォールバックし、`kind: "alias-resolve"` の警告が `_export-warnings.json` に記録されます（参照先が単一モードの場合はフォールバックしても警告は出ません）
 
 ## 出力構造（概要）
 - modeごとに1 Group（フラットなトークン集合）
