@@ -3,6 +3,7 @@ import { convertPaintStyleToTokens } from "./convertPatintStyleToColorOrGradient
 import { FigmaColorStyle } from "../types/figma";
 import { createVariableNameMap } from "../resolve/createVariableNameMap";
 import type { FigmaCollectionData } from "../collections";
+import { createWarningCollector } from "../warnings";
 import {
   ColorToken,
   ColorValue,
@@ -412,5 +413,534 @@ describe("convertPaintStyleToTokens", () => {
     const value = token.$value as GradientValue;
     expect(value[0].color).toBe("{Colors.start}");
     expect(value[1].color).toBe("{Colors.end}");
+  });
+
+  describe("paint.opacity の統一（SOLID/GRADIENT ともに opacity ?? 1 === 1 のときのみ alias 参照）", () => {
+    const createColorsCollection = (): FigmaCollectionData[] => [
+      {
+        id: "VariableCollectionId:1:2",
+        name: "Colors",
+        defaultModeId: "1:0",
+        modes: [{ modeId: "1:0", name: "Mode 1" }],
+        variables: [
+          {
+            id: "VariableID:133:3",
+            name: "primary",
+            resolvedType: "COLOR",
+            valuesByMode: { "1:0": { r: 1, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const createGradientColorsCollection = (): FigmaCollectionData[] => [
+      {
+        id: "VariableCollectionId:1:2",
+        name: "Colors",
+        defaultModeId: "1:0",
+        modes: [{ modeId: "1:0", name: "Mode 1" }],
+        variables: [
+          {
+            id: "VariableID:88:2",
+            name: "start",
+            resolvedType: "COLOR",
+            valuesByMode: { "1:0": { r: 1, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:88:3",
+            name: "end",
+            resolvedType: "COLOR",
+            valuesByMode: { "1:0": { r: 0, g: 0, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    it("SOLID: opacity 0.5 + alias 解決可能 → 参照を破棄して RGBA を焼き込み、paint-opacity 警告を1件記録する", () => {
+      const variableNameMap = createVariableNameMap(createColorsCollection());
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-solid-opacity-05-alias",
+        name: "solidOpacity05Alias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 0.5,
+            blendMode: "NORMAL",
+            color: { r: 0.2, g: 0.4, b: 0.6 },
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:133:3" },
+            },
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["solidOpacity05Alias"] as ColorToken;
+
+      expect(token.$value).not.toBe("{Colors.primary}");
+      expect(token.$value).toEqual({
+        colorSpace: "srgb",
+        components: [0.2, 0.4, 0.6],
+        alpha: 0.5,
+      });
+
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({
+        severity: "warning",
+        kind: "paint-opacity",
+        source: "PaintStyle: solidOpacity05Alias",
+      });
+      expect(warnings.items[0].message).toContain("0.5");
+    });
+
+    it("SOLID: opacity 0.5 + alias なし → alpha 焼き込みのみで警告は出さない", () => {
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-solid-opacity-05-no-alias",
+        name: "solidOpacity05NoAlias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 0.5,
+            blendMode: "NORMAL",
+            color: { r: 0.1, g: 0.2, b: 0.3 },
+            boundVariables: {},
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(paintStyle, new Map(), warnings);
+      const token = tokens["solidOpacity05NoAlias"] as ColorToken;
+
+      expect(token.$value).toEqual({
+        colorSpace: "srgb",
+        components: [0.1, 0.2, 0.3],
+        alpha: 0.5,
+      });
+      expect(warnings.items).toEqual([]);
+    });
+
+    it("SOLID: opacity 1 + alias 解決可能 → 参照を維持し警告は出さない", () => {
+      const variableNameMap = createVariableNameMap(createColorsCollection());
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-solid-opacity-1-alias",
+        name: "solidOpacity1Alias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            color: { r: 0.2, g: 0.4, b: 0.6 },
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:133:3" },
+            },
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["solidOpacity1Alias"] as ColorToken;
+
+      expect(token.$value).toBe("{Colors.primary}");
+      expect(warnings.items).toEqual([]);
+    });
+
+    it("SOLID: opacity が undefined → 1 として扱われ参照が維持される", () => {
+      const variableNameMap = createVariableNameMap(createColorsCollection());
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-solid-opacity-undefined",
+        name: "solidOpacityUndefined",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: undefined,
+            blendMode: "NORMAL",
+            color: { r: 0.2, g: 0.4, b: 0.6 },
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:133:3" },
+            },
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["solidOpacityUndefined"] as ColorToken;
+
+      expect(token.$value).toBe("{Colors.primary}");
+      expect(warnings.items).toEqual([]);
+    });
+
+    it("SOLID: opacity 0.5 + alias が variableNameMap にない → 焼き込み + paint-opacity 警告のみ（alias-resolve は出ない）", () => {
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-solid-opacity-05-missing-alias",
+        name: "solidOpacity05MissingAlias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 0.5,
+            blendMode: "NORMAL",
+            color: { r: 0.5, g: 0.5, b: 0.5 },
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:999:999" },
+            },
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(paintStyle, new Map(), warnings);
+      const token = tokens["solidOpacity05MissingAlias"] as ColorToken;
+
+      expect(token.$value).toEqual({
+        colorSpace: "srgb",
+        components: [0.5, 0.5, 0.5],
+        alpha: 0.5,
+      });
+
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items.map((item) => item.kind)).toEqual([
+        "paint-opacity",
+      ]);
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Variable ID not found"),
+      );
+    });
+
+    it("SOLID: opacity 0（falsy）+ alias → truthiness ではなく !== 1 で判定され焼き込み + 警告が発生する", () => {
+      const variableNameMap = createVariableNameMap(createColorsCollection());
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-solid-opacity-0-alias",
+        name: "solidOpacity0Alias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "SOLID",
+            visible: true,
+            opacity: 0,
+            blendMode: "NORMAL",
+            color: { r: 0.2, g: 0.4, b: 0.6 },
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:133:3" },
+            },
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["solidOpacity0Alias"] as ColorToken;
+
+      expect(token.$value).toEqual({
+        colorSpace: "srgb",
+        components: [0.2, 0.4, 0.6],
+        alpha: 0,
+      });
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0].kind).toBe("paint-opacity");
+    });
+
+    it("GRADIENT: opacity 0.5 + 両 stop に alias 解決可能 → 各 stop で alpha = a * 0.5、paint-opacity 警告はちょうど1件", () => {
+      const variableNameMap = createVariableNameMap(
+        createGradientColorsCollection(),
+      );
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-gradient-opacity-05-alias",
+        name: "gradientOpacity05Alias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "GRADIENT_LINEAR",
+            visible: true,
+            opacity: 0.5,
+            blendMode: "NORMAL",
+            gradientStops: [
+              {
+                color: { r: 1, g: 0, b: 0, a: 1 },
+                position: 0,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:88:2" },
+                },
+              },
+              {
+                color: { r: 0, g: 0, b: 1, a: 0.8 },
+                position: 1,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:88:3" },
+                },
+              },
+            ],
+            gradientTransform: [
+              [1, 0, 0],
+              [0, 1, 0],
+            ],
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["gradientOpacity05Alias"] as GradientToken;
+      const value = token.$value as GradientValue;
+
+      expect(value[0].color).toEqual({
+        colorSpace: "srgb",
+        components: [1, 0, 0],
+        alpha: 0.5,
+      });
+      expect(value[1].color).toEqual({
+        colorSpace: "srgb",
+        components: [0, 0, 1],
+        alpha: 0.4,
+      });
+
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({
+        severity: "warning",
+        kind: "paint-opacity",
+        source: "PaintStyle: gradientOpacity05Alias",
+      });
+    });
+
+    it("GRADIENT: opacity 0.5 + alias なし → 警告は出さない", () => {
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-gradient-opacity-05-no-alias",
+        name: "gradientOpacity05NoAlias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "GRADIENT_LINEAR",
+            visible: true,
+            opacity: 0.5,
+            blendMode: "NORMAL",
+            gradientStops: [
+              {
+                color: { r: 1, g: 0, b: 0, a: 1 },
+                position: 0,
+                boundVariables: {},
+              },
+              {
+                color: { r: 0, g: 0, b: 1, a: 1 },
+                position: 1,
+                boundVariables: {},
+              },
+            ],
+            gradientTransform: [
+              [1, 0, 0],
+              [0, 1, 0],
+            ],
+          },
+        ],
+      };
+
+      convertPaintStyleToTokens(paintStyle, new Map(), warnings);
+
+      expect(warnings.items).toEqual([]);
+    });
+
+    it("GRADIENT: opacity 1 + alias → 参照を維持し警告は出さない", () => {
+      const variableNameMap = createVariableNameMap(
+        createGradientColorsCollection(),
+      );
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-gradient-opacity-1-alias",
+        name: "gradientOpacity1Alias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "GRADIENT_LINEAR",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            gradientStops: [
+              {
+                color: { r: 1, g: 0, b: 0, a: 1 },
+                position: 0,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:88:2" },
+                },
+              },
+              {
+                color: { r: 0, g: 0, b: 1, a: 1 },
+                position: 1,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:88:3" },
+                },
+              },
+            ],
+            gradientTransform: [
+              [1, 0, 0],
+              [0, 1, 0],
+            ],
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["gradientOpacity1Alias"] as GradientToken;
+      const value = token.$value as GradientValue;
+
+      expect(value[0].color).toBe("{Colors.start}");
+      expect(value[1].color).toBe("{Colors.end}");
+      expect(warnings.items).toEqual([]);
+    });
+
+    it("GRADIENT: opacity が undefined + alias 解決可能 → 参照が維持される（旧実装の厳密比較によるリグレッション防止）", () => {
+      const variableNameMap = createVariableNameMap(
+        createGradientColorsCollection(),
+      );
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-gradient-opacity-undefined-alias",
+        name: "gradientOpacityUndefinedAlias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "GRADIENT_LINEAR",
+            visible: true,
+            opacity: undefined,
+            blendMode: "NORMAL",
+            gradientStops: [
+              {
+                color: { r: 1, g: 0, b: 0, a: 1 },
+                position: 0,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:88:2" },
+                },
+              },
+              {
+                color: { r: 0, g: 0, b: 1, a: 1 },
+                position: 1,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:88:3" },
+                },
+              },
+            ],
+            gradientTransform: [
+              [1, 0, 0],
+              [0, 1, 0],
+            ],
+          },
+        ],
+      };
+
+      const tokens = convertPaintStyleToTokens(
+        paintStyle,
+        variableNameMap,
+        warnings,
+      );
+      const token = tokens["gradientOpacityUndefinedAlias"] as GradientToken;
+      const value = token.$value as GradientValue;
+
+      expect(value[0].color).toBe("{Colors.start}");
+      expect(value[1].color).toBe("{Colors.end}");
+      expect(warnings.items).toEqual([]);
+    });
+
+    it("GRADIENT: opacity 1 + alias が map にない → 従来通り alias-resolve 警告のみで paint-opacity は出ない", () => {
+      const warnings = createWarningCollector();
+
+      const paintStyle: FigmaColorStyle = {
+        id: "style-gradient-opacity-1-missing-alias",
+        name: "gradientOpacity1MissingAlias",
+        description: "",
+        type: "PAINT",
+        paints: [
+          {
+            type: "GRADIENT_LINEAR",
+            visible: true,
+            opacity: 1,
+            blendMode: "NORMAL",
+            gradientStops: [
+              {
+                color: { r: 1, g: 0, b: 0, a: 1 },
+                position: 0,
+                boundVariables: {
+                  color: { type: "VARIABLE_ALIAS", id: "VariableID:999:999" },
+                },
+              },
+              {
+                color: { r: 0, g: 0, b: 1, a: 1 },
+                position: 1,
+                boundVariables: {},
+              },
+            ],
+            gradientTransform: [
+              [1, 0, 0],
+              [0, 1, 0],
+            ],
+          },
+        ],
+      };
+
+      convertPaintStyleToTokens(paintStyle, new Map(), warnings);
+
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({ kind: "alias-resolve" });
+    });
   });
 });
