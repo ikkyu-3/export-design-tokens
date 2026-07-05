@@ -1,5 +1,6 @@
 import { TypedFigmaVariable } from "../collections";
 import { DimensionToken } from "../types/token";
+import { getResolvedValue } from "../resolve/resolvedAlias";
 import { isAliasValue, toTokenReference } from "./util";
 
 export function convertToDimensionToken(
@@ -16,7 +17,7 @@ export function convertToDimensionToken(
     );
   }
 
-  const raw = variable.valuesByMode[modeId];
+  const raw = getResolvedValue(variable, modeId);
   if (raw === undefined) {
     throw new Error(
       `FLOAT variable "${variable.name}" has undefined value for mode "${modeId}".`,

@@ -27,7 +27,7 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 ### `main()` の処理フロー（`src/code.ts`）
 1. `getCollections()` でローカル変数を全Collection取得
 2. `createVariableNameMap(collections)` で `VariableId → { defaultName, modes[modeId] }` のマップを構築
-3. `resolveAliasesForAllCollections(collections, nameMap)` で `VARIABLE_ALIAS` のIDを名前パス（`{GroupName.tokenName}` 形式の元）に書き換える（**clone してから書き換える**点に注意）
+3. `resolveAliasesForAllCollections(collections, nameMap)` で `VARIABLE_ALIAS` のIDを名前パス（`{GroupName.tokenName}` 形式の元）に書き換える（**clone してから書き換える**点に注意）。resolve 済みであることは branded type `ResolvedVariableAlias`（`src/resolve/resolvedAlias.ts`）で表現され、convert 層は `getResolvedValue` 経由で valuesByMode を読む。`toTokenReference` は resolve 済み alias しか受け付けない（未 resolve の `VariableAlias` はコンパイルエラー）。
 4. 各 collection を `convertCollectionToModeNamedGroups` で mode 単位の Group に変換
 5. `getTextStyles(variableNameMap)` / `getPaintStyles(variableNameMap)` / `getEffectStyles(variableNameMap)` でスタイル系を変換（すべて variableNameMap を受け取り boundVariables を参照解決する）
 6. すべてを配列でまとめて UI へ送る（`falsy` は filter で除外）

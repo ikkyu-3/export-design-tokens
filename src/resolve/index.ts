@@ -5,6 +5,10 @@ import { WarningCollector } from "../warnings";
 
 /**
  * 全コレクションを対象に VARIABLE_ALIAS を ID 参照から名前（パス）参照へ解決する。
+ *
+ * この関数を通過した collection の alias 値は型上 `ResolvedVariableAlias`
+ * （`./resolvedAlias.ts`）として扱ってよい。convert 層は `getResolvedValue`
+ * 経由で読む。
  */
 export function resolveAliasesForAllCollections(
   collections: FigmaCollectionData[],

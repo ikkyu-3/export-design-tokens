@@ -1,12 +1,13 @@
 import { TypedFigmaVariable } from "../collections";
 import { FontFamilyToken } from "../types/token";
+import { getResolvedValue } from "../resolve/resolvedAlias";
 import { isAliasValue, toTokenReference } from "./util";
 
 export function convertToFontFamilyToken(
   variable: TypedFigmaVariable<"STRING">,
   modeId: string,
 ): FontFamilyToken {
-  const raw = variable.valuesByMode[modeId];
+  const raw = getResolvedValue(variable, modeId);
   if (raw === undefined) {
     throw new Error(
       `String variable "${variable.name}" has no value for mode "${modeId}".`,

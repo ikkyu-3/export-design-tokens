@@ -1,12 +1,13 @@
 import { TypedFigmaVariable } from "../collections";
 import { NumberToken } from "../types/token";
+import { getResolvedValue } from "../resolve/resolvedAlias";
 import { isAliasValue, toTokenReference } from "./util";
 
 export function convertToNumberToken(
   variable: TypedFigmaVariable<"FLOAT">,
   modeId: string,
 ): NumberToken {
-  const raw = variable.valuesByMode[modeId];
+  const raw = getResolvedValue(variable, modeId);
   if (raw === undefined) {
     throw new Error(
       `FLOAT variable "${variable.name}" has undefined value for mode "${modeId}".`,
