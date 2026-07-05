@@ -105,7 +105,7 @@ describe("resolveAliasesForAllCollections", () => {
     });
   });
 
-  it("複数モードの参照先でも、defaultModeId に対応するモード名で group 名が決まる", () => {
+  it("複数モードの参照先では、参照元と同名のモードの Group 名で解決される", () => {
     const collections: FigmaCollectionData[] = [
       {
         id: "col-X",
@@ -147,14 +147,24 @@ describe("resolveAliasesForAllCollections", () => {
       },
     ];
 
-    const nameMap = createVariableNameMap(collections);
-    const result = resolveAliasesForAllCollections(collections, nameMap);
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
 
     const resolved = result[1].variables[0].valuesByMode.m1 as VariableAlias;
     expect(resolved).toEqual({
       type: "VARIABLE_ALIAS",
-      id: "MultiDark.textColor",
+      id: "MultiLight.textColor",
     });
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(0);
   });
 
   it("参照先 ID が見つからない場合は警告してスキップする", () => {
@@ -417,5 +427,410 @@ describe("resolveAliasesForAllCollections", () => {
       Record<string, ColorToken>
     >;
     expect(group.alias.ref.$value).toBe("{BrandDark.color.brand.primary}");
+
+    const lightGroup = groups[0]["BrandLight"] as unknown as Record<
+      string,
+      Record<string, ColorToken>
+    >;
+    expect(lightGroup.alias.ref.$value).toBe(
+      "{BrandLight.color.brand.primary}",
+    );
+  });
+
+  it("コレクション間の参照でも、参照元と同名モードの Group 名で解決される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-primitive",
+        name: "Primitive",
+        defaultModeId: "primitive-light-id",
+        modes: [
+          { modeId: "primitive-light-id", name: "light" },
+          { modeId: "primitive-dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-primitive",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "primitive-light-id": { r: 1, g: 1, b: 1, a: 1 },
+              "primitive-dark-id": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-semantic",
+        name: "Semantic",
+        defaultModeId: "semantic-light-id",
+        modes: [
+          { modeId: "semantic-light-id", name: "light" },
+          { modeId: "semantic-dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-semantic",
+            name: "colorSurface",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "semantic-light-id": {
+                type: "VARIABLE_ALIAS",
+                id: "var-primitive",
+              },
+              "semantic-dark-id": {
+                type: "VARIABLE_ALIAS",
+                id: "var-primitive",
+              },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    const semanticVar = result[1].variables[0];
+    expect(
+      (semanticVar.valuesByMode["semantic-light-id"] as VariableAlias).id,
+    ).toBe("PrimitiveLight.colorBase");
+    expect(
+      (semanticVar.valuesByMode["semantic-dark-id"] as VariableAlias).id,
+    ).toBe("PrimitiveDark.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(0);
+  });
+
+  it("参照元と一致するモード名が参照先にない場合、参照先の defaultMode にフォールバックし警告する", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-target",
+        name: "Target",
+        defaultModeId: "target-dark-id",
+        modes: [
+          { modeId: "target-light-id", name: "light" },
+          { modeId: "target-dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-target",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "target-light-id": { r: 1, g: 1, b: 1, a: 1 },
+              "target-dark-id": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-source",
+        name: "Source",
+        defaultModeId: "source-mode-1",
+        modes: [{ modeId: "source-mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-alias",
+            name: "colorAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "source-mode-1": { type: "VARIABLE_ALIAS", id: "var-target" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    const resolved = result[1].variables[0].valuesByMode[
+      "source-mode-1"
+    ] as VariableAlias;
+    expect(resolved.id).toBe("TargetDark.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(1);
+    expect(aliasResolveWarnings[0].message).toContain("Mode 1");
+    expect(aliasResolveWarnings[0].message).toContain("light, dark");
+    expect(aliasResolveWarnings[0].message).toContain("TargetDark.colorBase");
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it("参照先が単一モードの場合は、モード名が不一致でも警告せず defaultName に解決される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-target",
+        name: "Target",
+        defaultModeId: "target-mode-1",
+        modes: [{ modeId: "target-mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-target",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: { "target-mode-1": { r: 1, g: 1, b: 1, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-source",
+        name: "Source",
+        defaultModeId: "source-dark-id",
+        modes: [
+          { modeId: "source-light-id", name: "light" },
+          { modeId: "source-dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-alias",
+            name: "colorAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "source-light-id": { type: "VARIABLE_ALIAS", id: "var-target" },
+              "source-dark-id": { type: "VARIABLE_ALIAS", id: "var-target" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    const resolvedDark = result[1].variables[0].valuesByMode[
+      "source-dark-id"
+    ] as VariableAlias;
+    expect(resolvedDark.id).toBe("Target.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(0);
+  });
+
+  it("参照元の modeId がコレクションの modes に存在しない異常系では defaultName にフォールバックし警告する", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-target",
+        name: "Target",
+        defaultModeId: "target-dark-id",
+        modes: [
+          { modeId: "target-light-id", name: "light" },
+          { modeId: "target-dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-target",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "target-light-id": { r: 1, g: 1, b: 1, a: 1 },
+              "target-dark-id": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-source",
+        name: "Source",
+        defaultModeId: "source-mode-1",
+        modes: [{ modeId: "source-mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-alias",
+            name: "colorAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "ghost-mode": { type: "VARIABLE_ALIAS", id: "var-target" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    const resolved = result[1].variables[0].valuesByMode[
+      "ghost-mode"
+    ] as VariableAlias;
+    expect(resolved.id).toBe("TargetDark.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(1);
+    expect(aliasResolveWarnings[0].message).toContain("ghost-mode");
+  });
+
+  it("モード名の大文字小文字は区別され、不一致ならフォールバック＋警告する", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-target",
+        name: "Target",
+        defaultModeId: "target-dark-id",
+        modes: [
+          { modeId: "target-light-id", name: "light" },
+          { modeId: "target-dark-id", name: "dark" },
+        ],
+        variables: [
+          {
+            id: "var-target",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "target-light-id": { r: 1, g: 1, b: 1, a: 1 },
+              "target-dark-id": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-source",
+        name: "Source",
+        defaultModeId: "source-mode-1",
+        modes: [{ modeId: "source-mode-1", name: "Light" }],
+        variables: [
+          {
+            id: "var-alias",
+            name: "colorAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "source-mode-1": { type: "VARIABLE_ALIAS", id: "var-target" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    const resolved = result[1].variables[0].valuesByMode[
+      "source-mode-1"
+    ] as VariableAlias;
+    expect(resolved.id).toBe("TargetDark.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(1);
+    expect(aliasResolveWarnings[0].message).toContain("Light");
+  });
+
+  it("参照先のモード名が重複していても、複数モードなら不一致時に警告する", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-target",
+        name: "Target",
+        defaultModeId: "target-dup-2",
+        modes: [
+          { modeId: "target-dup-1", name: "same" },
+          { modeId: "target-dup-2", name: "same" },
+        ],
+        variables: [
+          {
+            id: "var-target",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "target-dup-1": { r: 1, g: 1, b: 1, a: 1 },
+              "target-dup-2": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-source",
+        name: "Source",
+        defaultModeId: "source-mode-1",
+        modes: [{ modeId: "source-mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-alias",
+            name: "colorAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "source-mode-1": { type: "VARIABLE_ALIAS", id: "var-target" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    // 参照先の 2 モードは同名 "same" のため modesByName.size は 1 に潰れるが、
+    // 参照先は複数モードなので曖昧な参照として警告が出る必要がある。
+    const resolved = result[1].variables[0].valuesByMode[
+      "source-mode-1"
+    ] as VariableAlias;
+    expect(resolved.id).toBe("TargetSame.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(1);
   });
 });

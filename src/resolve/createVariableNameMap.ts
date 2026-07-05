@@ -11,6 +11,7 @@ interface VariableNameValue {
   modes: {
     [modeId: ModeId]: VariableName;
   };
+  modesByName: Map<string, VariableName>;
 }
 
 export type VariableNameMap = ReturnType<typeof createVariableNameMap>;
@@ -40,6 +41,7 @@ export function createVariableNameMap(
 
     col.variables.forEach((v) => {
       const entry: Record<ModeId, VariableName> = {};
+      const byName = new Map<string, VariableName>();
 
       // path 導出は mode 非依存なのでループ外へ
       const tokenName = sanitizer
@@ -52,7 +54,9 @@ export function createVariableNameMap(
           rawGroupName,
           `Group: ${rawGroupName} (collection: ${col.name})`,
         );
-        entry[mode.modeId] = `${groupName}.${tokenName}`;
+        const name: VariableName = `${groupName}.${tokenName}`;
+        entry[mode.modeId] = name;
+        byName.set(mode.name, name); // 同名 mode は後勝ち
       });
 
       const defaultName = entry[col.defaultModeId];
@@ -71,6 +75,7 @@ export function createVariableNameMap(
       variableNameMap.set(v.id, {
         defaultName: defaultName,
         modes: entry,
+        modesByName: byName,
       });
     });
   });
