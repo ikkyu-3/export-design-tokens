@@ -2,13 +2,19 @@ import { describe, it, expect, vi } from "vitest";
 import { convertEffectStylesToShadows } from "./effectStyles";
 import { createWarningCollector } from "./warnings";
 import { effectStyles as mockEffectStyles } from "../mocks/effectStyles";
-import { FigmaEffectStyle } from "./types/figma";
+import { FigmaDropShadowEffect, FigmaEffectStyle } from "./types/figma";
 import { ShadowObjectValue, ShadowToken } from "./types/token";
+import { createVariableNameMap } from "./resolve/createVariableNameMap";
+import type { FigmaCollectionData } from "./collections";
 
 describe("convertEffectStylesToShadows", () => {
   it("visible な DROP_SHADOW/INNER_SHADOW を shadow トークンへ変換する", () => {
     const warnings = createWarningCollector();
-    const result = convertEffectStylesToShadows(mockEffectStyles, warnings);
+    const result = convertEffectStylesToShadows(
+      mockEffectStyles,
+      new Map(),
+      warnings,
+    );
 
     expect(Object.keys(result).sort()).toEqual(
       mockEffectStyles.map((s) => s.name).sort(),
@@ -45,6 +51,7 @@ describe("convertEffectStylesToShadows", () => {
           ],
         },
       ],
+      new Map(),
       warnings,
     );
 
@@ -82,6 +89,7 @@ describe("convertEffectStylesToShadows", () => {
     const warnings = createWarningCollector();
     const result = convertEffectStylesToShadows(
       [firstStyle, secondStyle],
+      new Map(),
       warnings,
     );
 
@@ -113,7 +121,11 @@ describe("convertEffectStylesToShadows", () => {
     };
 
     const warnings = createWarningCollector();
-    const result = convertEffectStylesToShadows([dottedStyle], warnings);
+    const result = convertEffectStylesToShadows(
+      [dottedStyle],
+      new Map(),
+      warnings,
+    );
 
     expect(Object.keys(result)).toEqual(["shadow-soft"]);
 
@@ -132,12 +144,63 @@ describe("convertEffectStylesToShadows", () => {
     };
 
     const warnings = createWarningCollector();
-    const result = convertEffectStylesToShadows([nestedStyle], warnings);
+    const result = convertEffectStylesToShadows(
+      [nestedStyle],
+      new Map(),
+      warnings,
+    );
 
     const elevation = result["elevation"] as unknown as Record<
       string,
       ShadowToken
     >;
     expect(elevation.low.$value).toBeDefined();
+  });
+
+  it("実際の variableNameMap 経由で boundVariables がツリーの葉まで参照解決される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "VariableCollectionId:3:2",
+        name: "Elevation",
+        defaultModeId: "1:0",
+        modes: [{ modeId: "1:0", name: "Mode 1" }],
+        variables: [
+          {
+            id: "VariableID:3:2",
+            name: "shadowColor",
+            resolvedType: "COLOR",
+            valuesByMode: { "1:0": { r: 0, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+    const variableNameMap = createVariableNameMap(collections);
+
+    const boundStyle: FigmaEffectStyle = {
+      ...mockEffectStyles[0],
+      name: "BoundShadow",
+      effects: [
+        {
+          ...(mockEffectStyles[0].effects[0] as FigmaDropShadowEffect),
+          boundVariables: {
+            color: { type: "VARIABLE_ALIAS", id: "VariableID:3:2" },
+          },
+        },
+      ],
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertEffectStylesToShadows(
+      [boundStyle],
+      variableNameMap,
+      warnings,
+    );
+
+    const value = (result["BoundShadow"] as ShadowToken)
+      .$value as ShadowObjectValue;
+    expect(value.color).toBe("{Elevation.shadowColor}");
+    expect(warnings.items).toEqual([]);
   });
 });

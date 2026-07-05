@@ -69,6 +69,14 @@ Text Styles は `typography` トークンに変換されます。以下のプロ
 - fontSize が 0 の場合も TypeError を投げます
 - 数値の丸め処理には `roundTo2ndDecimal` を使用し、浮動小数点誤差を軽減しています
 
+### boundVariables の参照化
+
+- `fontFamily`/`fontSize`/`letterSpacing`/`lineHeight` に boundVariables が設定されている場合、対応する値は計算値の代わりに `{GroupName.TokenName}` 参照として出力されます
+- `fontWeight` は `fontWeight` の bound を優先し、無ければ `fontStyle` の bound にフォールバックします（両方 bound の場合は `fontWeight` が優先）
+- bound の Variable ID が解決できない場合は計算値にフォールバックし、`kind: "alias-resolve"` の警告が `_export-warnings.json` に記録されます
+- `paragraphSpacing`/`paragraphIndent` の boundVariables は対応する出力フィールドが無いため無視されます（読まれず、警告も出ません）
+- lineHeight/letterSpacing が bound の場合は変換計算そのものをスキップします（Infinity/NaN による TypeError も発生しません）。ただし letterSpacing(PERCENT)/lineHeight(PIXELS実寸) の計算には常に生の `fontSize` を使うため、fontSize が bound で参照出力されていても計算結果には影響しません
+
 ## Paint Styles (Color/Gradient) 変換ルール
 
 Paint Styles は `color` または `gradient` トークンに変換されます。
@@ -116,6 +124,13 @@ Effect Styles は `shadow` トークンに変換されます。
 | blur | `radius` を `{ value: number, unit: "px" }` 形式で出力 |
 | spread | `spread` を `{ value: number, unit: "px" }` 形式で出力 |
 | inset | `INNER_SHADOW` の場合 `true`、それ以外は省略 |
+
+### boundVariables の参照化
+
+- 各エフェクトの boundVariables（`color`/`offsetX`/`offsetY`/`radius`/`spread`）は `{GroupName.TokenName}` 参照として出力されます。Figma 側のフィールド名 `radius` はトークン側の `blur` に対応します
+- 判定はエフェクト単位で独立して行われます（1 Style 内に複数エフェクトがある場合、一部だけ bound でも問題ありません）
+- `color` が bound の場合、alpha は参照先の Variable に従うため `effect.color.a` は出力に反映されません
+- bound の Variable ID が解決できない場合は値にフォールバックし、`kind: "alias-resolve"` の警告が `_export-warnings.json` に記録されます
 
 ## エイリアス（Alias）
 - FigmaのエイリアスはID参照ですが、出力時は `{GroupName.TokenName}` 形式に解決します

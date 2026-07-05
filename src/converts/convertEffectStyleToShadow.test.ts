@@ -1,14 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertEffectStyleToShadow } from "./convertEffectStyleToShadow";
 import { effectStyles } from "../../mocks/effectStyles";
 import { ColorValue, ShadowObjectValue } from "../types/token";
 import { FigmaDropShadowEffect, FigmaEffectStyle } from "../types/figma";
 import { Effect } from "@figma/plugin-typings/plugin-api-standalone";
+import { createVariableNameMap } from "../resolve/createVariableNameMap";
+import { createWarningCollector } from "../warnings";
+import type { FigmaCollectionData } from "../collections";
 
 describe("convertEffectStyleToShadow", () => {
   it("DROP_SHADOWを ShadowToken に変換できる", () => {
     const dropShadow = effectStyles[0];
-    const result = convertEffectStyleToShadow(dropShadow);
+    const result = convertEffectStyleToShadow(dropShadow, new Map());
 
     expect(result).not.toBeNull();
     expect(result?.[dropShadow.name]).toBeDefined();
@@ -28,7 +31,7 @@ describe("convertEffectStyleToShadow", () => {
 
   it("複数の DROP_SHADOW を配列で変換できる", () => {
     const doubleShadow = effectStyles[1];
-    const result = convertEffectStyleToShadow(doubleShadow);
+    const result = convertEffectStyleToShadow(doubleShadow, new Map());
 
     expect(result).not.toBeNull();
 
@@ -50,7 +53,7 @@ describe("convertEffectStyleToShadow", () => {
 
   it("INNER_SHADOW を inset=true で変換できる", () => {
     const innerShadow = effectStyles[2];
-    const result = convertEffectStyleToShadow(innerShadow);
+    const result = convertEffectStyleToShadow(innerShadow, new Map());
 
     expect(result).not.toBeNull();
 
@@ -70,7 +73,7 @@ describe("convertEffectStyleToShadow", () => {
       ],
     };
 
-    const result = convertEffectStyleToShadow(effectStyleWithHidden);
+    const result = convertEffectStyleToShadow(effectStyleWithHidden, new Map());
 
     expect(result).toBeNull();
   });
@@ -86,7 +89,7 @@ describe("convertEffectStyleToShadow", () => {
       ],
     };
 
-    const result = convertEffectStyleToShadow(effectStyleWithBlur);
+    const result = convertEffectStyleToShadow(effectStyleWithBlur, new Map());
 
     expect(result).toBeNull();
   });
@@ -94,7 +97,7 @@ describe("convertEffectStyleToShadow", () => {
   it("color 値が正しく変換される", () => {
     const dropShadow = effectStyles[0];
     const effect = dropShadow.effects[0] as FigmaDropShadowEffect;
-    const result = convertEffectStyleToShadow(dropShadow);
+    const result = convertEffectStyleToShadow(dropShadow, new Map());
 
     const token = result?.[dropShadow.name];
     const shadowValue = token?.$value as ShadowObjectValue;
@@ -112,7 +115,7 @@ describe("convertEffectStyleToShadow", () => {
   it("offset と blur が px 単位で変換される", () => {
     const dropShadow = effectStyles[0];
     const effect = dropShadow.effects[0] as FigmaDropShadowEffect;
-    const result = convertEffectStyleToShadow(dropShadow);
+    const result = convertEffectStyleToShadow(dropShadow, new Map());
 
     const token = result?.[dropShadow.name];
     const shadowValue = token?.$value as ShadowObjectValue;
@@ -132,6 +135,272 @@ describe("convertEffectStyleToShadow", () => {
     expect(shadowValue.spread).toEqual({
       value: effect.spread,
       unit: "px",
+    });
+  });
+
+  describe("boundVariables の参照化", () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    const elevationCollection: FigmaCollectionData[] = [
+      {
+        id: "VariableCollectionId:2:1",
+        name: "Elevation",
+        defaultModeId: "1:0",
+        modes: [{ modeId: "1:0", name: "Mode 1" }],
+        variables: [
+          {
+            id: "VariableID:2:1",
+            name: "shadowColor",
+            resolvedType: "COLOR",
+            valuesByMode: { "1:0": { r: 0, g: 0, b: 0, a: 1 } },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:2:2",
+            name: "x",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 0 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:2:3",
+            name: "y",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 4 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:2:4",
+            name: "blur",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 8 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+          {
+            id: "VariableID:2:5",
+            name: "spread",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 2 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    function makeEffectStyle(
+      overrides: Partial<FigmaDropShadowEffect> = {},
+    ): FigmaEffectStyle {
+      return {
+        id: "style-bound-1",
+        name: "Bound",
+        description: "",
+        type: "EFFECT",
+        effects: [
+          {
+            type: "DROP_SHADOW",
+            visible: true,
+            radius: 4,
+            boundVariables: {},
+            color: { r: 0, g: 0, b: 0, a: 0.25 },
+            offset: { x: 0, y: 4 },
+            spread: 0,
+            blendMode: "NORMAL",
+            showShadowBehindNode: false,
+            ...overrides,
+          } as FigmaDropShadowEffect,
+        ],
+      };
+    }
+
+    it("color が bound の場合、参照になり alpha は出力に現れない", () => {
+      const variableNameMap = createVariableNameMap(elevationCollection);
+      const effectStyle = makeEffectStyle({
+        boundVariables: {
+          color: { type: "VARIABLE_ALIAS", id: "VariableID:2:1" },
+        },
+      });
+
+      const result = convertEffectStyleToShadow(effectStyle, variableNameMap);
+      const shadowValue = result?.[effectStyle.name]
+        .$value as ShadowObjectValue;
+
+      expect(shadowValue.color).toBe("{Elevation.shadowColor}");
+      expect(shadowValue.offsetX).toEqual({ value: 0, unit: "px" });
+      expect(shadowValue.offsetY).toEqual({ value: 4, unit: "px" });
+      expect(shadowValue.blur).toEqual({ value: 4, unit: "px" });
+      expect(shadowValue.spread).toEqual({ value: 0, unit: "px" });
+      expect(JSON.stringify(shadowValue)).not.toContain("0.25");
+    });
+
+    it("offsetX/offsetY が bound の場合、それぞれ参照になる", () => {
+      const variableNameMap = createVariableNameMap(elevationCollection);
+      const effectStyle = makeEffectStyle({
+        boundVariables: {
+          offsetX: { type: "VARIABLE_ALIAS", id: "VariableID:2:2" },
+          offsetY: { type: "VARIABLE_ALIAS", id: "VariableID:2:3" },
+        },
+      });
+
+      const result = convertEffectStyleToShadow(effectStyle, variableNameMap);
+      const shadowValue = result?.[effectStyle.name]
+        .$value as ShadowObjectValue;
+
+      expect(shadowValue.offsetX).toBe("{Elevation.x}");
+      expect(shadowValue.offsetY).toBe("{Elevation.y}");
+    });
+
+    it("radius が bound の場合、blur が参照になる（radius→blur 名前ズレ）。出力に radius キーは無い", () => {
+      const variableNameMap = createVariableNameMap(elevationCollection);
+      const effectStyle = makeEffectStyle({
+        boundVariables: {
+          radius: { type: "VARIABLE_ALIAS", id: "VariableID:2:4" },
+        },
+      });
+
+      const result = convertEffectStyleToShadow(effectStyle, variableNameMap);
+      const shadowValue = result?.[effectStyle.name]
+        .$value as ShadowObjectValue;
+
+      expect(shadowValue.blur).toBe("{Elevation.blur}");
+      expect(shadowValue).not.toHaveProperty("radius");
+    });
+
+    it("spread が bound の場合、参照になる", () => {
+      const variableNameMap = createVariableNameMap(elevationCollection);
+      const effectStyle = makeEffectStyle({
+        boundVariables: {
+          spread: { type: "VARIABLE_ALIAS", id: "VariableID:2:5" },
+        },
+      });
+
+      const result = convertEffectStyleToShadow(effectStyle, variableNameMap);
+      const shadowValue = result?.[effectStyle.name]
+        .$value as ShadowObjectValue;
+
+      expect(shadowValue.spread).toBe("{Elevation.spread}");
+    });
+
+    it("2つの effect のうち1つ目だけ color が bound の場合、effect ごとに独立して判定される", () => {
+      const variableNameMap = createVariableNameMap(elevationCollection);
+      const effectStyle: FigmaEffectStyle = {
+        id: "style-bound-2",
+        name: "TwoEffects",
+        description: "",
+        type: "EFFECT",
+        effects: [
+          {
+            type: "DROP_SHADOW",
+            visible: true,
+            radius: 4,
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:2:1" },
+            },
+            color: { r: 0, g: 0, b: 0, a: 0.25 },
+            offset: { x: 0, y: 4 },
+            spread: 0,
+            blendMode: "NORMAL",
+            showShadowBehindNode: false,
+          },
+          {
+            type: "DROP_SHADOW",
+            visible: true,
+            radius: 4,
+            boundVariables: {},
+            color: { r: 1, g: 1, b: 1, a: 0.5 },
+            offset: { x: 0, y: 2 },
+            spread: 0,
+            blendMode: "NORMAL",
+            showShadowBehindNode: false,
+          },
+        ],
+      };
+
+      const result = convertEffectStyleToShadow(effectStyle, variableNameMap);
+      const shadowValues = result?.[effectStyle.name]
+        .$value as ShadowObjectValue[];
+
+      expect(shadowValues[0].color).toBe("{Elevation.shadowColor}");
+      expect(shadowValues[1].color).toEqual({
+        colorSpace: "srgb",
+        components: [1, 1, 1],
+        alpha: 0.5,
+      });
+    });
+
+    it("color の bound が map miss の場合、値フォールバック（alpha込み）＋ alias-resolve 警告が1件記録される", () => {
+      const warnings = createWarningCollector();
+      const effectStyle = makeEffectStyle({
+        boundVariables: {
+          color: { type: "VARIABLE_ALIAS", id: "VariableID:999:999" },
+        },
+      });
+
+      const result = convertEffectStyleToShadow(
+        effectStyle,
+        new Map(),
+        warnings,
+      );
+      const shadowValue = result?.[effectStyle.name]
+        .$value as ShadowObjectValue;
+
+      expect(shadowValue.color).toEqual({
+        colorSpace: "srgb",
+        components: [0, 0, 0],
+        alpha: 0.25,
+      });
+      expect(warnings.items).toHaveLength(1);
+      expect(warnings.items[0]).toMatchObject({
+        severity: "warning",
+        kind: "alias-resolve",
+        source: "EffectStyle: Bound",
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Variable ID not found"),
+      );
+    });
+
+    it("INNER_SHADOW かつ bound がある場合、inset:true と参照が共存する", () => {
+      const variableNameMap = createVariableNameMap(elevationCollection);
+      const effectStyle: FigmaEffectStyle = {
+        id: "style-bound-3",
+        name: "InnerBound",
+        description: "",
+        type: "EFFECT",
+        effects: [
+          {
+            type: "INNER_SHADOW",
+            visible: true,
+            radius: 4,
+            boundVariables: {
+              color: { type: "VARIABLE_ALIAS", id: "VariableID:2:1" },
+            },
+            color: { r: 0, g: 0, b: 0, a: 0.25 },
+            offset: { x: 0, y: 4 },
+            spread: 0,
+            blendMode: "NORMAL",
+          },
+        ],
+      };
+
+      const result = convertEffectStyleToShadow(effectStyle, variableNameMap);
+      const shadowValue = result?.[effectStyle.name]
+        .$value as ShadowObjectValue;
+
+      expect(shadowValue.inset).toBe(true);
+      expect(shadowValue.color).toBe("{Elevation.shadowColor}");
     });
   });
 });

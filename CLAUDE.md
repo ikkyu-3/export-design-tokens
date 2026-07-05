@@ -29,7 +29,7 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 2. `createVariableNameMap(collections)` で `VariableId → { defaultName, modes[modeId] }` のマップを構築
 3. `resolveAliasesForAllCollections(collections, nameMap)` で `VARIABLE_ALIAS` のIDを名前パス（`{GroupName.tokenName}` 形式の元）に書き換える（**clone してから書き換える**点に注意）
 4. 各 collection を `convertCollectionToModeNamedGroups` で mode 単位の Group に変換
-5. `getTextStyles()` / `getPaintStyles(variableNameMap)` / `getEffectStyles()` でスタイル系を変換
+5. `getTextStyles(variableNameMap)` / `getPaintStyles(variableNameMap)` / `getEffectStyles(variableNameMap)` でスタイル系を変換（すべて variableNameMap を受け取り boundVariables を参照解決する）
 6. すべてを配列でまとめて UI へ送る（`falsy` は filter で除外）
 
 `main()` の冒頭で `createWarningCollector()`（`src/warnings.ts`）を生成し、上記1〜5の各関数にオプション引数として渡す。変換に失敗した Variable/Style は1件単位でスキップされ、collector に記録された `warnings.items` は `postMessage` の data に含めて UI へ渡され、ZIP内 `_export-warnings.json` として出力される。
@@ -51,9 +51,9 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 詳細表とエッジケースは README.md を参照。
 
 ### スタイル変換
-- **Text Styles** → `typography` トークン。lineHeight の単位（AUTO/PERCENT/PIXELS）と PIXELS の0.5〜3範囲判定など、`convertTextStyleToTypography.ts` 内の特殊ルールに注意。`fontSize=0` や lineHeight/letterSpacing が Infinity/NaN になると TypeError を投げる仕様。
+- **Text Styles** → `typography` トークン。lineHeight の単位（AUTO/PERCENT/PIXELS）と PIXELS の0.5〜3範囲判定など、`convertTextStyleToTypography.ts` 内の特殊ルールに注意。`fontSize=0` や lineHeight/letterSpacing が Infinity/NaN になると TypeError を投げる仕様。`boundVariables`（fontFamily/fontSize/letterSpacing/lineHeight、fontWeight は fontWeight bound 優先→fontStyle bound）があれば `resolveVariableAliasReference`（`src/converts/resolveVariableAliasReference.ts`）経由で `{GroupName.TokenName}` 参照を出力し、未解決は計算値フォールバック＋`kind: "alias-resolve"` 警告。lineHeight/letterSpacing が bound の場合は計算自体をスキップ（TypeError 検証も非適用）。paragraphSpacing/paragraphIndent の bound は無視。
 - **Paint Styles** → `color`（SOLID）/ `gradient`（GRADIENT_LINEAR）。SOLID / GRADIENT とも `paint.opacity ?? 1` が 1 のときのみ `boundVariables.color` のエイリアス参照を採用する。opacity ≠ 1 の場合は参照を破棄して RGBA を焼き込み（SOLID: alpha = opacity、GRADIENT: stop の alpha × opacity）、エイリアスが存在した場合は `kind: "paint-opacity"` の警告を記録する（GRADIENT は 1 paint につき最大1件）。複数paintは `{name}-color-{index}` / `{name}-gradient-{index}` で命名（0始まり）。IMAGE/VIDEO は除外。
-- **Effect Styles** → `shadow` トークン。`visible: true` かつ `DROP_SHADOW`/`INNER_SHADOW` のみ。1Style内の複数エフェクトは配列としてスタック順に保持。`INNER_SHADOW` のときだけ `inset: true`。
+- **Effect Styles** → `shadow` トークン。`visible: true` かつ `DROP_SHADOW`/`INNER_SHADOW` のみ。1Style内の複数エフェクトは配列としてスタック順に保持。`INNER_SHADOW` のときだけ `inset: true`。各エフェクトの `boundVariables`（color/offsetX/offsetY/radius/spread。radius は token 側 `blur` に対応）はエフェクト単位で独立に `resolveVariableAliasReference` 経由で参照化し、未解決は値フォールバック＋`kind: "alias-resolve"` 警告。color が bound のときは alpha も参照先に従う（`effect.color.a` は破棄）。
 
 ### 型レイヤ（`src/types/`）
 - `common.ts` — `AllTokenTypes`, `TokenReference = `{${string}}``, `TokenValue<T> = T | TokenReference`, `CommonProperties`

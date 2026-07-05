@@ -7,7 +7,11 @@ import {
   TypographyToken,
   TypographyValue,
 } from "../types/token";
+import { TokenValue } from "../types/common";
 import { roundTo2ndDecimal } from "./util";
+import { VariableNameMap } from "../resolve/createVariableNameMap";
+import { WarningCollector } from "../warnings";
+import { resolveVariableAliasReference } from "./resolveVariableAliasReference";
 
 type FigmaFontSize = Pick<DimensionValue, "value"> & { unit: "px" };
 
@@ -81,18 +85,37 @@ function toLineHeight(
 
 export function convertTextStyleToTypography(
   textStyle: FigmaTextStyle,
+  variableNameMap: VariableNameMap,
+  warnings?: WarningCollector,
 ): Record<string, TypographyToken> {
-  const fontFamily: FontFamilyValue = textStyle.fontName.family;
-  const fontWeight: FontWeightValue = toFontWeight(textStyle.fontName.style);
-  const fontSize: FigmaFontSize = {
-    value: textStyle.fontSize,
-    unit: "px",
-  };
-  const letterSpacing: DimensionValue = toLetterSpacing(
-    fontSize,
-    textStyle.letterSpacing,
-  );
-  const lineHeight: NumberValue = toLineHeight(fontSize, textStyle.lineHeight);
+  const source = `TextStyle: ${textStyle.name}`;
+  const bound = textStyle.boundVariables;
+  const resolve = (alias: VariableAlias | undefined, field: string) =>
+    resolveVariableAliasReference({
+      alias,
+      variableNameMap,
+      source,
+      prefix: "textStyle",
+      field,
+      warnings,
+    });
+
+  const rawFontSize: FigmaFontSize = { value: textStyle.fontSize, unit: "px" };
+
+  const fontFamily: TokenValue<FontFamilyValue> =
+    resolve(bound?.fontFamily, "fontFamily") ?? textStyle.fontName.family;
+  const fontWeight: TokenValue<FontWeightValue> =
+    resolve(bound?.fontWeight, "fontWeight") ??
+    resolve(bound?.fontStyle, "fontStyle") ??
+    toFontWeight(textStyle.fontName.style);
+  const fontSize: TokenValue<DimensionValue> =
+    resolve(bound?.fontSize, "fontSize") ?? rawFontSize;
+  const letterSpacing: TokenValue<DimensionValue> =
+    resolve(bound?.letterSpacing, "letterSpacing") ??
+    toLetterSpacing(rawFontSize, textStyle.letterSpacing);
+  const lineHeight: TokenValue<NumberValue> =
+    resolve(bound?.lineHeight, "lineHeight") ??
+    toLineHeight(rawFontSize, textStyle.lineHeight);
 
   const value: TypographyValue = {
     fontFamily,

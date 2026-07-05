@@ -8,6 +8,8 @@ import {
   TypographyValue,
 } from "./types/token";
 import { textStyles as mockTextStyles } from "../mocks/textStyles";
+import { createVariableNameMap } from "./resolve/createVariableNameMap";
+import type { FigmaCollectionData } from "./collections";
 
 describe("convertTextStylesToTypography", () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -22,7 +24,11 @@ describe("convertTextStylesToTypography", () => {
 
   it("正常なスタイルのみを渡した場合は全て変換される", () => {
     const warnings = createWarningCollector();
-    const result = convertTextStylesToTypography(mockTextStyles, warnings);
+    const result = convertTextStylesToTypography(
+      mockTextStyles,
+      new Map(),
+      warnings,
+    );
 
     expect(Object.keys(result).sort()).toEqual(
       mockTextStyles.map((s) => s.name).sort(),
@@ -44,6 +50,7 @@ describe("convertTextStylesToTypography", () => {
     const warnings = createWarningCollector();
     const result = convertTextStylesToTypography(
       [mockTextStyles[0], brokenStyle],
+      new Map(),
       warnings,
     );
 
@@ -76,6 +83,7 @@ describe("convertTextStylesToTypography", () => {
     const warnings = createWarningCollector();
     const result = convertTextStylesToTypography(
       [duplicatedStyle, duplicatedStyleOverride],
+      new Map(),
       warnings,
     );
 
@@ -104,7 +112,11 @@ describe("convertTextStylesToTypography", () => {
     };
 
     const warnings = createWarningCollector();
-    const result = convertTextStylesToTypography([dottedStyle], warnings);
+    const result = convertTextStylesToTypography(
+      [dottedStyle],
+      new Map(),
+      warnings,
+    );
 
     expect(Object.keys(result)).toEqual(["heading-large"]);
 
@@ -124,12 +136,58 @@ describe("convertTextStylesToTypography", () => {
     };
 
     const warnings = createWarningCollector();
-    const result = convertTextStylesToTypography([nestedStyle], warnings);
+    const result = convertTextStylesToTypography(
+      [nestedStyle],
+      new Map(),
+      warnings,
+    );
 
     const heading = result["Heading"] as unknown as Record<
       string,
       TypographyToken
     >;
     expect(heading.H1.$value).toBeDefined();
+  });
+
+  it("実際の variableNameMap 経由で boundVariables がツリーの葉まで参照解決される", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "VariableCollectionId:3:1",
+        name: "Typo",
+        defaultModeId: "1:0",
+        modes: [{ modeId: "1:0", name: "Mode 1" }],
+        variables: [
+          {
+            id: "VariableID:3:1",
+            name: "size",
+            resolvedType: "FLOAT",
+            valuesByMode: { "1:0": 20 },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+    const variableNameMap = createVariableNameMap(collections);
+
+    const boundStyle: FigmaTextStyle = {
+      ...mockTextStyles[0],
+      name: "BoundBody",
+      boundVariables: {
+        fontSize: { type: "VARIABLE_ALIAS", id: "VariableID:3:1" },
+      },
+    };
+
+    const warnings = createWarningCollector();
+    const result = convertTextStylesToTypography(
+      [boundStyle],
+      variableNameMap,
+      warnings,
+    );
+
+    const value = (result["BoundBody"] as TypographyToken)
+      .$value as TypographyValue;
+    expect(value.fontSize).toBe("{Typo.size}");
+    expect(warnings.items).toEqual([]);
   });
 });
