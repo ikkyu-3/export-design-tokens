@@ -768,4 +768,69 @@ describe("resolveAliasesForAllCollections", () => {
     expect(aliasResolveWarnings).toHaveLength(1);
     expect(aliasResolveWarnings[0].message).toContain("Light");
   });
+
+  it("参照先のモード名が重複していても、複数モードなら不一致時に警告する", () => {
+    const collections: FigmaCollectionData[] = [
+      {
+        id: "col-target",
+        name: "Target",
+        defaultModeId: "target-dup-2",
+        modes: [
+          { modeId: "target-dup-1", name: "same" },
+          { modeId: "target-dup-2", name: "same" },
+        ],
+        variables: [
+          {
+            id: "var-target",
+            name: "colorBase",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "target-dup-1": { r: 1, g: 1, b: 1, a: 1 },
+              "target-dup-2": { r: 0, g: 0, b: 0, a: 1 },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+      {
+        id: "col-source",
+        name: "Source",
+        defaultModeId: "source-mode-1",
+        modes: [{ modeId: "source-mode-1", name: "Mode 1" }],
+        variables: [
+          {
+            id: "var-alias",
+            name: "colorAlias",
+            resolvedType: "COLOR",
+            valuesByMode: {
+              "source-mode-1": { type: "VARIABLE_ALIAS", id: "var-target" },
+            },
+            description: "",
+            scopes: ["ALL_SCOPES"],
+          },
+        ],
+      },
+    ];
+
+    const warnings = createWarningCollector();
+    const nameMap = createVariableNameMap(collections, warnings);
+    const result = resolveAliasesForAllCollections(
+      collections,
+      nameMap,
+      warnings,
+    );
+
+    // 参照先の 2 モードは同名 "same" のため modesByName.size は 1 に潰れるが、
+    // 参照先は複数モードなので曖昧な参照として警告が出る必要がある。
+    const resolved = result[1].variables[0].valuesByMode[
+      "source-mode-1"
+    ] as VariableAlias;
+    expect(resolved.id).toBe("TargetSame.colorBase");
+
+    const aliasResolveWarnings = warnings.items.filter(
+      (w) => w.kind === "alias-resolve",
+    );
+    expect(aliasResolveWarnings).toHaveLength(1);
+  });
 });
