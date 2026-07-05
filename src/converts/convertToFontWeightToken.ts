@@ -1,12 +1,13 @@
 import { TypedFigmaVariable } from "../collections";
 import { FontWeightToken } from "../types/token";
+import { getResolvedValue } from "../resolve/resolvedAlias";
 import { isFontWeightValue, isAliasValue, toTokenReference } from "./util";
 
 export const convertToFontWeightTokenFromString = (
   variable: TypedFigmaVariable<"STRING">,
   modeId: string,
 ): FontWeightToken => {
-  const raw = variable.valuesByMode[modeId];
+  const raw = getResolvedValue(variable, modeId);
   if (raw === undefined) {
     throw new Error(
       `String variable "${variable.name}" has no value for mode "${modeId}".`,
@@ -40,7 +41,7 @@ export const convertToFontWeightTokenFromNumber = (
   variable: TypedFigmaVariable<"FLOAT">,
   modeId: string,
 ): FontWeightToken => {
-  const raw = variable.valuesByMode[modeId];
+  const raw = getResolvedValue(variable, modeId);
   if (raw === undefined) {
     throw new Error(
       `FLOAT variable "${variable.name}" has undefined value for mode "${modeId}".`,

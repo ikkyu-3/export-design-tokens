@@ -1,5 +1,6 @@
 import { TypedFigmaVariable } from "../collections";
 import { FontWeightValue } from "../types/token";
+import type { ResolvedVariableAlias } from "../resolve/resolvedAlias";
 
 export function capitalize(str: string): string {
   if (!str) return str;
@@ -21,7 +22,12 @@ export function makeGroupName(
     : collectionName;
 }
 
-export function toTokenReference(alias: VariableAlias): `{${string}}` {
+/**
+ * resolve 済み alias 専用。alias.id が VariableID から名前パスへ
+ * 書き換え済みであることを前提に参照文字列 `{name}` を生成する。
+ * 未 resolve の VariableAlias を渡すと型エラーになる（issue #26）。
+ */
+export function toTokenReference(alias: ResolvedVariableAlias): `{${string}}` {
   return `{${alias.id}}`;
 }
 

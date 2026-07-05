@@ -5,6 +5,7 @@ import {
   toTokenReference,
   roundTo2ndDecimal,
 } from "./util";
+import { getResolvedValue } from "../resolve/resolvedAlias";
 import {
   mockColorVariable,
   mockColorAliasVariable,
@@ -73,8 +74,19 @@ describe("isColorValue", () => {
 describe("toTokenReference", () => {
   it("VARIABLE_ALIAS から参照文字列 {id} を生成する", () => {
     const modeId = Object.keys(mockColorAliasVariable.valuesByMode)[0];
-    const alias = mockColorAliasVariable.valuesByMode[modeId] as VariableAlias;
-    expect(toTokenReference(alias)).toBe(`{${alias.id}}`);
+    const raw = getResolvedValue(mockColorAliasVariable, modeId);
+    if (!isAliasValue(raw)) throw new Error("mock は alias 値であるべき");
+    expect(toTokenReference(raw)).toBe(`{${raw.id}}`);
+  });
+
+  it("未 resolve の VariableAlias は型レベルで拒否される（実行時挙動は不変）", () => {
+    const rawAlias: VariableAlias = {
+      type: "VARIABLE_ALIAS",
+      id: "VariableID:88:2",
+    };
+    // @ts-expect-error resolve を通していない素の VariableAlias は toTokenReference に渡せない（issue #26 の enforcement）
+    const result = toTokenReference(rawAlias);
+    expect(result).toBe("{VariableID:88:2}");
   });
 });
 

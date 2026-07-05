@@ -1,12 +1,13 @@
 import { TypedFigmaVariable } from "../collections";
 import { ColorToken } from "../types/token";
+import { getResolvedValue } from "../resolve/resolvedAlias";
 import { isAliasValue, isRGBA, toTokenReference } from "./util";
 
 export const convertToColorToken = (
   variable: TypedFigmaVariable<"COLOR">,
   modeId: string,
 ): ColorToken => {
-  const raw = variable.valuesByMode[modeId];
+  const raw = getResolvedValue(variable, modeId);
   if (raw === undefined) {
     throw new Error(
       `Color variable "${variable.name}" has no value for mode "${modeId}".`,
