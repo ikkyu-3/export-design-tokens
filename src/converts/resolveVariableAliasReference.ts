@@ -36,7 +36,7 @@ export function resolveVariableAliasReference({
     return `{${variableName.defaultName}}`;
   }
 
-  const message = `[${prefix}] Variable ID not found: ${alias.id} (field: ${field}), using raw value as fallback`;
+  const message = `[${prefix}] Variable ID not found: ${alias.id} (field: ${field}), using fallback value`;
   console.warn(message);
   warnings?.add({
     severity: "warning",
