@@ -1,5 +1,5 @@
 import { TypedFigmaVariable } from "../collections";
-import { ColorValue, FontWeightValue } from "../types/token";
+import type { ColorValue, FontWeightValue } from "../types/token";
 import type { ResolvedVariableAlias } from "../resolve/resolvedAlias";
 
 export function capitalize(str: string): string {

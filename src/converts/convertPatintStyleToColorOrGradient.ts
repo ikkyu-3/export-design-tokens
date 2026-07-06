@@ -1,5 +1,5 @@
 import { FigmaColorStyle } from "../types/figma";
-import { ColorToken, GradientToken, GradientValue } from "../types/token";
+import type { ColorToken, GradientToken, GradientValue } from "../types/token";
 import { VariableNameMap } from "../resolve/createVariableNameMap";
 import { WarningCollector } from "../warnings";
 import { makeColorValue } from "./util";
