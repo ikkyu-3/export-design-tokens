@@ -1,7 +1,7 @@
 import { TypedFigmaVariable } from "../collections";
 import { ColorToken } from "../types/token";
 import { getResolvedValue } from "../resolve/resolvedAlias";
-import { isAliasValue, isRGBA, toTokenReference } from "./util";
+import { isAliasValue, isRGBA, makeColorValue, toTokenReference } from "./util";
 
 export const convertToColorToken = (
   variable: TypedFigmaVariable<"COLOR">,
@@ -28,10 +28,6 @@ export const convertToColorToken = (
   return {
     ...base,
     $type: "color",
-    $value: {
-      colorSpace: "srgb",
-      components: [r, g, b],
-      alpha: isRGBA(raw) ? raw.a : 1,
-    },
+    $value: makeColorValue(r, g, b, isRGBA(raw) ? raw.a : 1),
   };
 };

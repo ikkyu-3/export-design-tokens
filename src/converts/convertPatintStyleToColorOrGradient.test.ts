@@ -50,7 +50,6 @@ describe("convertPaintStyleToTokens", () => {
     expect(token.$value).toEqual({
       colorSpace: "srgb",
       components: [0.5, 0.5, 0.5],
-      alpha: 1,
     });
   });
 
@@ -135,6 +134,51 @@ describe("convertPaintStyleToTokens", () => {
     expect((value[0].color as ColorValue).alpha).toBe(0.5);
     expect(value[1].position).toBe(1);
     expect((value[1].color as ColorValue).alpha).toBe(0.5);
+  });
+
+  it("GRADIENT: opacity 1 かつ stop a=1 → alpha キーは出力されない", () => {
+    const paintStyle: FigmaColorStyle = {
+      id: "style-3b",
+      name: "gradientOpaque",
+      description: "",
+      type: "PAINT",
+      paints: [
+        {
+          type: "GRADIENT_LINEAR",
+          visible: true,
+          opacity: 1,
+          blendMode: "NORMAL",
+          gradientStops: [
+            {
+              color: { r: 1, g: 0, b: 0, a: 1 },
+              position: 0,
+              boundVariables: {},
+            },
+            {
+              color: { r: 0, g: 0, b: 1, a: 1 },
+              position: 1,
+              boundVariables: {},
+            },
+          ],
+          gradientTransform: [
+            [1, 0, 0],
+            [0, 1, 0],
+          ],
+        },
+      ],
+    };
+
+    const emptyMap = new Map();
+    const tokens = convertPaintStyleToTokens(paintStyle, emptyMap);
+
+    const token = tokens["gradientOpaque"] as GradientToken;
+    const value = token.$value as GradientValue;
+
+    expect(value[0].color).toEqual({
+      colorSpace: "srgb",
+      components: [1, 0, 0],
+    });
+    expect("alpha" in (value[0].color as object)).toBe(false);
   });
 
   it("複数の GRADIENT_LINEAR を gradient-{index} で命名する", () => {
@@ -327,7 +371,6 @@ describe("convertPaintStyleToTokens", () => {
     expect(token.$value).toEqual({
       colorSpace: "srgb",
       components: [0.5, 0.5, 0.5],
-      alpha: 1,
     });
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Variable ID not found"),

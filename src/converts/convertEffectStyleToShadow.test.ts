@@ -112,6 +112,33 @@ describe("convertEffectStyleToShadow", () => {
     expect(color.alpha).toBe(effect.color.a);
   });
 
+  it("color の a が 1 の場合は alpha キーが省略される", () => {
+    const dropShadow = effectStyles[0];
+    const effectStyleWithOpaqueColor: FigmaEffectStyle = {
+      ...dropShadow,
+      effects: [
+        {
+          ...(dropShadow.effects[0] as FigmaDropShadowEffect),
+          color: { r: 0, g: 0, b: 0, a: 1 },
+        },
+      ],
+    };
+    const result = convertEffectStyleToShadow(
+      effectStyleWithOpaqueColor,
+      new Map(),
+    );
+
+    const token = result?.[effectStyleWithOpaqueColor.name];
+    const shadowValue = token?.$value as ShadowObjectValue;
+    const color = shadowValue.color as ColorValue;
+
+    expect(color).toEqual({
+      colorSpace: "srgb",
+      components: [0, 0, 0],
+    });
+    expect("alpha" in (color as object)).toBe(false);
+  });
+
   it("offset と blur が px 単位で変換される", () => {
     const dropShadow = effectStyles[0];
     const effect = dropShadow.effects[0] as FigmaDropShadowEffect;

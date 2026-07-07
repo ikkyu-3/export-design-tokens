@@ -1,12 +1,8 @@
 import { FigmaColorStyle } from "../types/figma";
-import {
-  ColorToken,
-  GradientToken,
-  ColorValue,
-  GradientValue,
-} from "../types/token";
+import type { ColorToken, GradientToken, GradientValue } from "../types/token";
 import { VariableNameMap } from "../resolve/createVariableNameMap";
 import { WarningCollector } from "../warnings";
+import { makeColorValue } from "./util";
 
 export type PaintStyleToken = ColorToken | GradientToken;
 type PluginBoundVariables = {
@@ -153,11 +149,7 @@ function convertSolidToColorToken({
   // 通常のカラー値（エイリアス未解決 or opacity 焼き込みの場合もここに含まれる）
   const { r, g, b } = paint.color;
 
-  const colorValue: ColorValue = {
-    colorSpace: "srgb",
-    components: [r, g, b],
-    alpha: paintOpacity,
-  };
+  const colorValue = makeColorValue(r, g, b, paintOpacity);
 
   return {
     ...base,
@@ -216,12 +208,8 @@ function convertGradientToGradientToken({
     }
 
     const { r, g, b, a } = stop.color;
-    const colorValue: ColorValue = {
-      colorSpace: "srgb",
-      components: [r, g, b],
-      // グラデーション全体の透明度が調整されている
-      alpha: a * paintOpacity,
-    };
+    // グラデーション全体の透明度が調整されている
+    const colorValue = makeColorValue(r, g, b, a * paintOpacity);
 
     return {
       color: colorValue,

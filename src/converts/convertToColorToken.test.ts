@@ -16,7 +16,6 @@ describe("convertToColorToken", () => {
     expect(token.$value).toEqual({
       colorSpace: "srgb",
       components: [v.r, v.g, v.b],
-      alpha: v.a,
     });
   });
 
@@ -37,7 +36,7 @@ describe("convertToColorToken", () => {
     ).toThrow();
   });
 
-  it("alphaが未指定の場合は1として扱われる", () => {
+  it("alphaが未指定の場合は省略される（既定値 1）", () => {
     const modeId = Object.keys(mockColorVariable.valuesByMode)[0];
     const original = mockColorVariable.valuesByMode[modeId] as FigmaRGBA;
     const variableWithoutAlpha = {
@@ -53,7 +52,25 @@ describe("convertToColorToken", () => {
     expect(token.$value).toEqual({
       colorSpace: "srgb",
       components: [original.r, original.g, original.b],
-      alpha: 1,
+    });
+  });
+
+  it("alphaが1未満の場合はalphaが出力される", () => {
+    const modeId = Object.keys(mockColorVariable.valuesByMode)[0];
+    const variableWithHalfAlpha = {
+      ...mockColorVariable,
+      valuesByMode: {
+        [modeId]: { r: 0.1, g: 0.2, b: 0.3, a: 0.5 },
+      },
+    };
+
+    const token = convertToColorToken(variableWithHalfAlpha, modeId);
+
+    expect(token.$type).toBe("color");
+    expect(token.$value).toEqual({
+      colorSpace: "srgb",
+      components: [0.1, 0.2, 0.3],
+      alpha: 0.5,
     });
   });
 });

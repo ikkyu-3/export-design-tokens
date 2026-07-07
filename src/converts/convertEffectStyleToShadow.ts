@@ -3,17 +3,14 @@ import {
   FigmaEffectStyle,
   FigmaRGBA,
 } from "../types/figma";
-import { ColorValue, ShadowObjectValue, ShadowToken } from "../types/token";
+import type { ColorValue, ShadowObjectValue, ShadowToken } from "../types/token";
 import { VariableNameMap } from "../resolve/createVariableNameMap";
 import { WarningCollector } from "../warnings";
 import { resolveVariableAliasReference } from "./resolveVariableAliasReference";
+import { makeColorValue } from "./util";
 
 function toColorValue(color: FigmaRGBA): ColorValue {
-  return {
-    colorSpace: "srgb",
-    components: [color.r, color.g, color.b],
-    alpha: color.a,
-  };
+  return makeColorValue(color.r, color.g, color.b, color.a);
 }
 
 interface ToShadowObjectProps {

@@ -4,6 +4,7 @@ import {
   isAliasValue,
   toTokenReference,
   roundTo2ndDecimal,
+  makeColorValue,
 } from "./util";
 import { getResolvedValue } from "../resolve/resolvedAlias";
 import {
@@ -120,5 +121,39 @@ describe("roundTo2ndDecimal", () => {
 
   it("NaN を渡すと TypeError を投げる", () => {
     expect(() => roundTo2ndDecimal(NaN)).toThrow(TypeError);
+  });
+});
+
+describe("makeColorValue", () => {
+  it("a === 1 の場合は alpha キーを省略する", () => {
+    expect(makeColorValue(0.1, 0.2, 0.3, 1)).toEqual({
+      colorSpace: "srgb",
+      components: [0.1, 0.2, 0.3],
+    });
+    expect("alpha" in makeColorValue(0.1, 0.2, 0.3, 1)).toBe(false);
+  });
+
+  it("a === 0 の場合は alpha: 0 が出力される", () => {
+    expect(makeColorValue(0.1, 0.2, 0.3, 0)).toEqual({
+      colorSpace: "srgb",
+      components: [0.1, 0.2, 0.3],
+      alpha: 0,
+    });
+  });
+
+  it("a === 0.5 の場合は alpha: 0.5 が出力される", () => {
+    expect(makeColorValue(0.1, 0.2, 0.3, 0.5)).toEqual({
+      colorSpace: "srgb",
+      components: [0.1, 0.2, 0.3],
+      alpha: 0.5,
+    });
+  });
+
+  it("a === 0.9999 の場合は丸めずそのまま alpha に出力される", () => {
+    expect(makeColorValue(0.1, 0.2, 0.3, 0.9999)).toEqual({
+      colorSpace: "srgb",
+      components: [0.1, 0.2, 0.3],
+      alpha: 0.9999,
+    });
   });
 });

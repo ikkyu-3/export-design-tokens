@@ -152,7 +152,6 @@ describe("convertPaintStylesToTokens", () => {
     expect((tokens["duplicated"] as ColorToken).$value).toEqual({
       colorSpace: "srgb",
       components: [0, 0, 1],
-      alpha: 1,
     });
 
     expect(warnings.items).toHaveLength(1);
