@@ -6,7 +6,8 @@ import { isProgressStep } from "../progress";
 export interface DownloadZipData {
   collections: ReadonlyArray<Record<string, unknown>>;
   warnings: ReadonlyArray<ExportWarning>;
-  zipFilename: string;
+  /** 省略時は UI 側（src/ui/main.ts）がデフォルト名にフォールバックする */
+  zipFilename?: string;
 }
 
 export type PluginToUiMessage =
