@@ -2,10 +2,52 @@ import JSZip from "jszip";
 import type { DownloadZipData, UiToPluginMessage } from "../types/messages";
 import { isPluginToUiMessage } from "../types/messages";
 import { buildZipEntries } from "../zipEntries";
+import { PROGRESS_STEP_LABELS, progressPercent } from "../progress";
 
 function postToPlugin(message: UiToPluginMessage): void {
   parent.postMessage({ pluginMessage: message }, "*");
 }
+
+function getElement<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`要素が見つかりません: #${id}`);
+  }
+  return el as T;
+}
+
+const progressView = getElement<HTMLDivElement>("progress-view");
+const progressLabel = getElement<HTMLDivElement>("progress-label");
+const progressFill = getElement<HTMLDivElement>("progress-fill");
+const resultView = getElement<HTMLDivElement>("result-view");
+const resultStatus = getElement<HTMLDivElement>("result-status");
+const resultDetail = getElement<HTMLDivElement>("result-detail");
+const closeButton = getElement<HTMLButtonElement>("close-button");
+
+/** 進捗ビューを表示する（結果ビューは隠す） */
+function showProgress(label: string, percent: number): void {
+  progressView.hidden = false;
+  resultView.hidden = true;
+  progressLabel.textContent = label;
+  progressFill.style.width = `${percent}%`;
+}
+
+/** 結果ビューを表示する（進捗ビューは隠す） */
+function showResult(options: {
+  status: string;
+  detail?: string;
+  isError?: boolean;
+}): void {
+  progressView.hidden = true;
+  resultView.hidden = false;
+  resultStatus.textContent = options.status;
+  resultStatus.classList.toggle("is-error", !!options.isError);
+  resultDetail.textContent = options.detail ?? "";
+}
+
+closeButton.addEventListener("click", () => {
+  postToPlugin({ type: "close" });
+});
 
 async function downloadAsZip(
   data: DownloadZipData,
@@ -39,14 +81,30 @@ async function downloadAsZip(
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    // 完了通知
+    if (warnings.length === 0) {
+      showResult({ status: "エクスポートが完了しました" });
+    } else {
+      showResult({
+        status: `エクスポートが完了しました（警告 ${warnings.length} 件）`,
+        detail: "詳細は ZIP 内の _export-warnings.json を確認してください",
+      });
+    }
+
+    // 完了通知（プラグイン側は警告0件のときのみ即クローズする）
     postToPlugin({ type: "download-complete" });
   } catch (error) {
     console.error("ZIP作成エラー:", error);
 
+    const message = error instanceof Error ? error.message : String(error);
+    showResult({
+      status: "ZIP の作成に失敗しました",
+      detail: message,
+      isError: true,
+    });
+
     postToPlugin({
       type: "error",
-      error: error instanceof Error ? error.message : String(error),
+      error: message,
     });
   }
 }
@@ -54,9 +112,25 @@ async function downloadAsZip(
 onmessage = (event: MessageEvent) => {
   const msg: unknown = event.data?.pluginMessage;
 
-  if (isPluginToUiMessage(msg) && msg.type === "download-zip") {
+  if (!isPluginToUiMessage(msg)) return;
+
+  if (msg.type === "download-zip") {
     // zipFilename は code.ts 側でサニタイズ・組み立て済み。
     // 欠落時（バージョンずれ）は downloadAsZip のデフォルト名にフォールバック
+    showProgress(PROGRESS_STEP_LABELS.zip, progressPercent("zip"));
     downloadAsZip(msg.data, msg.data.zipFilename || undefined);
+  } else if (msg.type === "export-progress") {
+    showProgress(
+      PROGRESS_STEP_LABELS[msg.step],
+      progressPercent(msg.step, msg.current, msg.total),
+    );
+  } else if (msg.type === "export-error") {
+    showResult({
+      status: "エクスポートに失敗しました",
+      detail: msg.error,
+      isError: true,
+    });
   }
 };
+
+postToPlugin({ type: "ui-ready" });

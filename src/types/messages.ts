@@ -1,4 +1,6 @@
 import type { ExportWarning } from "../warnings";
+import type { ProgressStep } from "../progress";
+import { isProgressStep } from "../progress";
 
 /** code.ts → UI へ渡すダウンロードデータ。UI側をトークン内部型に結合させないため collections は緩い型で受け取る */
 export interface DownloadZipData {
@@ -7,13 +9,20 @@ export interface DownloadZipData {
   zipFilename: string;
 }
 
-export type PluginToUiMessage = {
-  type: "download-zip";
-  data: DownloadZipData;
-};
+export type PluginToUiMessage =
+  | { type: "download-zip"; data: DownloadZipData }
+  | {
+      type: "export-progress";
+      step: ProgressStep;
+      current?: number;
+      total?: number;
+    }
+  | { type: "export-error"; error: string };
 
 export type UiToPluginMessage =
+  | { type: "ui-ready" }
   | { type: "download-complete" }
+  | { type: "close" }
   | { type: "error"; error: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,16 +37,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function isPluginToUiMessage(
   value: unknown,
 ): value is PluginToUiMessage {
-  if (!isRecord(value) || value.type !== "download-zip") {
+  if (!isRecord(value)) {
     return false;
   }
-  const data = value.data;
-  return (
-    isRecord(data) &&
-    Array.isArray(data.collections) &&
-    Array.isArray(data.warnings) &&
-    (data.zipFilename === undefined || typeof data.zipFilename === "string")
-  );
+
+  if (value.type === "download-zip") {
+    const data = value.data;
+    return (
+      isRecord(data) &&
+      Array.isArray(data.collections) &&
+      Array.isArray(data.warnings) &&
+      (data.zipFilename === undefined || typeof data.zipFilename === "string")
+    );
+  }
+
+  if (value.type === "export-progress") {
+    return (
+      isProgressStep(value.step) &&
+      (value.current === undefined || typeof value.current === "number") &&
+      (value.total === undefined || typeof value.total === "number")
+    );
+  }
+
+  if (value.type === "export-error") {
+    return typeof value.error === "string";
+  }
+
+  return false;
 }
 
 /** UI から code.ts へ送られるメッセージかどうかを判定する。参照するフィールドの形まで検証する */
@@ -47,6 +73,11 @@ export function isUiToPluginMessage(
   if (!isRecord(value)) {
     return false;
   }
+
+  if (value.type === "ui-ready" || value.type === "close") {
+    return true;
+  }
+
   return (
     value.type === "download-complete" ||
     (value.type === "error" && typeof value.error === "string")
