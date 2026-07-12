@@ -135,7 +135,7 @@ export interface ShadowObjectValue {
   inset?: boolean;
 }
 
-export type ShadowValue = ShadowObjectValue | ShadowObjectValue[];
+export type ShadowValue = ShadowObjectValue | TokenValue<ShadowObjectValue>[];
 
 export interface ShadowToken extends CommonProperties {
   $type: "shadow";

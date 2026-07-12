@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertEffectStyleToShadow } from "./convertEffectStyleToShadow";
 import { effectStyles } from "../../mocks/effectStyles";
-import { ColorValue, ShadowObjectValue } from "../types/token";
-import { FigmaDropShadowEffect, FigmaEffectStyle } from "../types/figma";
-import { Effect } from "@figma/plugin-typings/plugin-api-standalone";
+import type {
+  ColorValue,
+  ShadowObjectValue,
+  ShadowValue,
+} from "../types/token";
+import type { FigmaShadowEffect, FigmaEffectStyle } from "../types/figma";
+import type { Effect } from "@figma/plugin-typings/plugin-api-standalone";
 import { createVariableNameMap } from "../resolve/createVariableNameMap";
 import { createWarningCollector } from "../warnings";
 import type { FigmaCollectionData } from "../collections";
@@ -96,7 +100,7 @@ describe("convertEffectStyleToShadow", () => {
 
   it("color 値が正しく変換される", () => {
     const dropShadow = effectStyles[0];
-    const effect = dropShadow.effects[0] as FigmaDropShadowEffect;
+    const effect = dropShadow.effects[0] as FigmaShadowEffect;
     const result = convertEffectStyleToShadow(dropShadow, new Map());
 
     const token = result?.[dropShadow.name];
@@ -118,7 +122,7 @@ describe("convertEffectStyleToShadow", () => {
       ...dropShadow,
       effects: [
         {
-          ...(dropShadow.effects[0] as FigmaDropShadowEffect),
+          ...(dropShadow.effects[0] as FigmaShadowEffect),
           color: { r: 0, g: 0, b: 0, a: 1 },
         },
       ],
@@ -141,7 +145,7 @@ describe("convertEffectStyleToShadow", () => {
 
   it("offset と blur が px 単位で変換される", () => {
     const dropShadow = effectStyles[0];
-    const effect = dropShadow.effects[0] as FigmaDropShadowEffect;
+    const effect = dropShadow.effects[0] as FigmaShadowEffect;
     const result = convertEffectStyleToShadow(dropShadow, new Map());
 
     const token = result?.[dropShadow.name];
@@ -163,6 +167,26 @@ describe("convertEffectStyleToShadow", () => {
       value: effect.spread,
       unit: "px",
     });
+  });
+
+  it('spread が undefined のエフェクトでは spread トークンが { value: 0, unit: "px" } になる', () => {
+    const dropShadow = effectStyles[0];
+    const { spread: _spread, ...effectWithoutSpread } = dropShadow
+      .effects[0] as FigmaShadowEffect;
+    const effectStyleWithUndefinedSpread: FigmaEffectStyle = {
+      ...dropShadow,
+      effects: [effectWithoutSpread as unknown as FigmaShadowEffect],
+    };
+
+    const result = convertEffectStyleToShadow(
+      effectStyleWithUndefinedSpread,
+      new Map(),
+    );
+
+    const token = result?.[effectStyleWithUndefinedSpread.name];
+    const shadowValue = token?.$value as ShadowObjectValue;
+
+    expect(shadowValue.spread).toEqual({ value: 0, unit: "px" });
   });
 
   describe("boundVariables の参照化", () => {
@@ -228,7 +252,7 @@ describe("convertEffectStyleToShadow", () => {
     ];
 
     function makeEffectStyle(
-      overrides: Partial<FigmaDropShadowEffect> = {},
+      overrides: Partial<FigmaShadowEffect> = {},
     ): FigmaEffectStyle {
       return {
         id: "style-bound-1",
@@ -247,7 +271,7 @@ describe("convertEffectStyleToShadow", () => {
             blendMode: "NORMAL",
             showShadowBehindNode: false,
             ...overrides,
-          } as FigmaDropShadowEffect,
+          } as FigmaShadowEffect,
         ],
       };
     }
@@ -429,5 +453,22 @@ describe("convertEffectStyleToShadow", () => {
       expect(shadowValue.inset).toBe(true);
       expect(shadowValue.color).toBe("{Elevation.shadowColor}");
     });
+  });
+});
+
+describe("ShadowValue 型", () => {
+  it("配列要素に ShadowObjectValue と TokenReference が混在していても代入できる（型レベルチェック）", () => {
+    const mixedShadowValue: ShadowValue = [
+      {
+        color: { colorSpace: "srgb", components: [0, 0, 0], alpha: 0.25 },
+        offsetX: { value: 0, unit: "px" },
+        offsetY: { value: 4, unit: "px" },
+        blur: { value: 4, unit: "px" },
+        spread: { value: 0, unit: "px" },
+      },
+      "{Elevation.shadow}",
+    ];
+
+    expect(mixedShadowValue).toHaveLength(2);
   });
 });

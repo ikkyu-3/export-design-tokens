@@ -1,5 +1,5 @@
-import {
-  FigmaDropShadowEffect,
+import type {
+  FigmaShadowEffect,
   FigmaEffectStyle,
   FigmaRGBA,
 } from "../types/figma";
@@ -18,7 +18,7 @@ function toColorValue(color: FigmaRGBA): ColorValue {
 }
 
 interface ToShadowObjectProps {
-  effect: FigmaDropShadowEffect;
+  effect: FigmaShadowEffect;
   variableNameMap: VariableNameMap;
   source: string;
   warnings?: WarningCollector;
@@ -57,7 +57,7 @@ function toShadowObject({
       unit: "px",
     },
     spread: resolve(bound?.spread, "spread") ?? {
-      value: effect.spread || 0,
+      value: effect.spread ?? 0,
       unit: "px",
     },
   };
@@ -80,7 +80,7 @@ export function convertEffectStyleToShadow(
     (effect) =>
       effect.visible &&
       (effect.type === "DROP_SHADOW" || effect.type === "INNER_SHADOW"),
-  ) as FigmaDropShadowEffect[];
+  ) as FigmaShadowEffect[];
 
   if (shadowEffects.length === 0) {
     return null;
