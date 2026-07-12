@@ -26,6 +26,52 @@ describe("isPluginToUiMessage", () => {
   it("undefined は false", () => {
     expect(isPluginToUiMessage(undefined)).toBe(false);
   });
+
+  it("data が欠落している場合は false", () => {
+    expect(isPluginToUiMessage({ type: "download-zip" })).toBe(false);
+  });
+
+  it("data が非オブジェクトの場合は false", () => {
+    expect(isPluginToUiMessage({ type: "download-zip", data: "x" })).toBe(
+      false,
+    );
+  });
+
+  it("collections が配列でない場合は false", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "download-zip",
+        data: { collections: {}, warnings: [], zipFilename: "a.zip" },
+      }),
+    ).toBe(false);
+  });
+
+  it("warnings が配列でない場合は false", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "download-zip",
+        data: { collections: [], warnings: "warn", zipFilename: "a.zip" },
+      }),
+    ).toBe(false);
+  });
+
+  it("zipFilename が undefined でも true（フォールバック経路を許容）", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "download-zip",
+        data: { collections: [], warnings: [] },
+      }),
+    ).toBe(true);
+  });
+
+  it("zipFilename が文字列以外の場合は false", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "download-zip",
+        data: { collections: [], warnings: [], zipFilename: 42 },
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("isUiToPluginMessage", () => {
@@ -39,6 +85,14 @@ describe("isUiToPluginMessage", () => {
 
   it("type が異なる場合は false", () => {
     expect(isUiToPluginMessage({ type: "download-zip" })).toBe(false);
+  });
+
+  it("type: error で error が欠落している場合は false", () => {
+    expect(isUiToPluginMessage({ type: "error" })).toBe(false);
+  });
+
+  it("type: error で error が文字列以外の場合は false", () => {
+    expect(isUiToPluginMessage({ type: "error", error: 42 })).toBe(false);
   });
 
   it("null は false", () => {

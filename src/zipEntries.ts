@@ -12,8 +12,9 @@ export interface ZipEntry {
 }
 
 /**
- * ZIP に格納するエントリ（ファイル名とJSON文字列）を組み立てる純粋関数。
- * DOM/JSZip に依存しないため、UI層と分離してユニットテストできる。
+ * ZIP に格納するエントリ（ファイル名とJSON文字列）を組み立てる。
+ * DOM/JSZip に依存しないため、UI層と分離してユニットテストできる
+ * （空 group への console.warn を除き副作用はない）。
  */
 export function buildZipEntries(
   collections: ReadonlyArray<Record<string, unknown>>,
