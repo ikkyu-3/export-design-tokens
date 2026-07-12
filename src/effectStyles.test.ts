@@ -3,7 +3,7 @@ import { convertEffectStylesToShadows } from "./effectStyles";
 import { createWarningCollector } from "./warnings";
 import { effectStyles as mockEffectStyles } from "../mocks/effectStyles";
 import type { FigmaShadowEffect, FigmaEffectStyle } from "./types/figma";
-import { ShadowObjectValue, ShadowToken } from "./types/token";
+import type { ShadowObjectValue, ShadowToken } from "./types/token";
 import { createVariableNameMap } from "./resolve/createVariableNameMap";
 import type { FigmaCollectionData } from "./collections";
 

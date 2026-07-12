@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { convertEffectStyleToShadow } from "./convertEffectStyleToShadow";
 import { effectStyles } from "../../mocks/effectStyles";
-import { ColorValue, ShadowObjectValue, ShadowValue } from "../types/token";
+import type {
+  ColorValue,
+  ShadowObjectValue,
+  ShadowValue,
+} from "../types/token";
 import type { FigmaShadowEffect, FigmaEffectStyle } from "../types/figma";
-import { Effect } from "@figma/plugin-typings/plugin-api-standalone";
+import type { Effect } from "@figma/plugin-typings/plugin-api-standalone";
 import { createVariableNameMap } from "../resolve/createVariableNameMap";
 import { createWarningCollector } from "../warnings";
 import type { FigmaCollectionData } from "../collections";
