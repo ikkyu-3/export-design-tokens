@@ -1,15 +1,8 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["ES2017", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "noEmit": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@figma"
-    ],
-    "skipLibCheck": true
-  }
+    "lib": ["ES2017"],
+    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
+  },
+  "exclude": ["node_modules", "dist", "src/ui"]
 }
