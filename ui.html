@@ -79,16 +79,9 @@
     const msg = event.data.pluginMessage;
 
     if (msg?.type === "download-zip") {
-      const now = new Date();
-      const timestamp =
-        now.getFullYear().toString() +
-        (now.getMonth() + 1).toString().padStart(2, "0") +
-        now.getDate().toString().padStart(2, "0") +
-        now.getHours().toString().padStart(2, "0") +
-        now.getMinutes().toString().padStart(2, "0");
-
-      const zipFilename = `export-design-tokens_${timestamp}.zip`;
-      downloadAsZip(msg.data, zipFilename);
+      // zipFilename は code.ts 側でサニタイズ・組み立て済み。
+      // 欠落時（バージョンずれ）は downloadAsZip のデフォルト名にフォールバック
+      downloadAsZip(msg.data, msg.data.zipFilename || undefined);
     }
   };
 </script>

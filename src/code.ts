@@ -7,6 +7,7 @@ import { getPaintStyles } from "./paintStyles";
 import { createVariableNameMap } from "./resolve/createVariableNameMap";
 import { createWarningCollector } from "./warnings";
 import { findDuplicateFileNames } from "./duplicates";
+import { buildZipFilename } from "./zipFilename";
 
 figma.showUI(__html__, { width: 280, height: 80, visible: false });
 
@@ -77,6 +78,7 @@ async function main() {
       data: {
         collections: collectionsData,
         warnings: warnings.items,
+        zipFilename: buildZipFilename(figma.root.name, new Date()),
       },
     });
   } catch (e) {
