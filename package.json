@@ -4,7 +4,7 @@
   "description": "自分のFigmaプラグイン",
   "main": "dist/code.js",
   "scripts": {
-    "type-check": "tsc ",
+    "type-check": "tsc -p tsconfig.json && tsc -p tsconfig.ui.json",
     "build": "node build.mjs",
     "build:dev": "npm run type-check && node build.mjs --dev",
     "watch": "node build.mjs --dev --watch",
@@ -40,7 +40,7 @@
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-      "project": "./tsconfig.json"
+      "project": ["./tsconfig.json", "./tsconfig.ui.json"]
     },
     "root": true,
     "rules": {
@@ -64,5 +64,8 @@
         }
       }
     ]
+  },
+  "dependencies": {
+    "jszip": "3.10.1"
   }
 }

@@ -17,6 +17,8 @@ Figmaのローカル変数・スタイルを、W3C Design Tokens Draft準拠のJ
 
 ## 処理の流れ
 - プラグイン実行 → ローカル変数/スタイルを取得 → エイリアス解決 → JSON生成 → ZIPでダウンロード
+- 出力ファイルの拡張子は `{キー}.tokens.json`（DTCG推奨拡張子）です（`_export-warnings.json` を除く）
+- ZIP生成にはJSZipをプラグイン本体にバンドルして使用しており、外部ネットワークアクセスは不要です（`manifest.json` の `networkAccess.allowedDomains` は `["none"]`）
 
 ## 変換に失敗した場合の挙動（警告の集約）
 - Variable / Text Style / Paint Style / Effect Style は、変換に失敗しても1件単位でスキップされ、エクスポート全体は継続します

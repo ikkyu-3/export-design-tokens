@@ -8,13 +8,18 @@ import { createVariableNameMap } from "./resolve/createVariableNameMap";
 import { createWarningCollector } from "./warnings";
 import { findDuplicateFileNames } from "./duplicates";
 import { buildZipFilename } from "./zipFilename";
+import { tokenFileName } from "./zipEntries";
+import { isUiToPluginMessage } from "./types/messages";
+import type { PluginToUiMessage } from "./types/messages";
 
 figma.showUI(__html__, { width: 280, height: 80, visible: false });
 
 const warnings = createWarningCollector();
 
-figma.ui.onmessage = (msg) => {
-  if (msg?.type === "download-complete") {
+figma.ui.onmessage = (msg: unknown) => {
+  if (!isUiToPluginMessage(msg)) return;
+
+  if (msg.type === "download-complete") {
     const warningCount = warnings.items.length;
     if (warningCount > 0) {
       figma.closePlugin(
@@ -23,7 +28,7 @@ figma.ui.onmessage = (msg) => {
     } else {
       figma.closePlugin("エクスポートが完了しました");
     }
-  } else if (msg?.type === "error") {
+  } else if (msg.type === "error") {
     figma.closePlugin("エラーが発生しました: " + msg.error);
   }
 };
@@ -60,27 +65,29 @@ async function main() {
       typography,
       paintStyles,
       effectStyles,
-    ].filter(Boolean);
+    ].filter((c): c is NonNullable<typeof c> => c != null);
 
     for (const { name, count } of findDuplicateFileNames(collectionsData)) {
-      const message = `出力ファイル名 "${name}.json" が ${count} 件の出力で重複しています。ZIP 内では最後の 1 件で上書きされます。`;
+      const filename = tokenFileName(name);
+      const message = `出力ファイル名 "${filename}" が ${count} 件の出力で重複しています。ZIP 内では最後の 1 件で上書きされます。`;
       console.warn(message);
       warnings.add({
         severity: "warning",
         kind: "duplicate",
-        source: `File: ${name}.json`,
+        source: `File: ${filename}`,
         message,
       });
     }
 
-    figma.ui.postMessage({
+    const message: PluginToUiMessage = {
       type: "download-zip",
       data: {
         collections: collectionsData,
         warnings: warnings.items,
         zipFilename: buildZipFilename(figma.root.name, new Date()),
       },
-    });
+    };
+    figma.ui.postMessage(message);
   } catch (e) {
     console.error(e);
     figma.closePlugin(`Export処理中にエラーが発生しました: ${String(e)}`);

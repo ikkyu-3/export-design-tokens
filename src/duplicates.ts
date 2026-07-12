@@ -96,8 +96,9 @@ export function setTokenAtPath<T extends { $value: unknown }>(
 }
 
 /**
- * ui.html は collections 配列の各要素のトップレベルキーごとに `${key}.json` を生成する。
- * 複数要素にまたがって 2 回以上出現するキー（＝ZIP 内で上書きされるファイル名）を返す。
+ * src/zipEntries.ts の buildZipEntries は collections 配列の各要素のトップレベルキーごとに
+ * `${key}.tokens.json` を生成する。複数要素にまたがって 2 回以上出現するキー
+ * （＝ZIP 内で上書きされるファイル名）を返す。
  */
 export function findDuplicateFileNames(
   collections: ReadonlyArray<Record<string, unknown> | null | undefined>,
