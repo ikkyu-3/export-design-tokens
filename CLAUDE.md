@@ -21,7 +21,7 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 
 ### エントリポイントとランタイム構成
 - **`src/code.ts`** — Figmaプラグインのメインスレッド側エントリ。`figma.showUI(__html__, { visible: false })` でUIをヘッドレス起動し、`main()` が逐次的にデータ取得→トークン生成→`figma.ui.postMessage({ type: "download-zip", ... })` で UI に渡す。
-- **`ui.html`** — UIスレッド側。CDNの JSZip を使い、受け取った collections 配列をファイルに分割してZIPダウンロードする。`networkAccess.allowedDomains` に `https://cdnjs.cloudflare.com` を許可済み。
+- **`ui.html`** — UIスレッド側。CDNの JSZip を使い、受け取った collections 配列をファイルに分割してZIPダウンロードする。`networkAccess.allowedDomains` に `https://cdnjs.cloudflare.com` を許可済み。ZIPファイル名は code.ts 側の `buildZipFilename`（`src/zipFilename.ts`）で組み立てられ、postMessage の `data.zipFilename` として渡される。
 - **`manifest.json`** — `editorType: ["figma", "dev"]`, `documentAccess: "dynamic-page"`。
 
 ### `main()` の処理フロー（`src/code.ts`）

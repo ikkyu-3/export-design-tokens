@@ -3,7 +3,11 @@ import {
   FigmaEffectStyle,
   FigmaRGBA,
 } from "../types/figma";
-import type { ColorValue, ShadowObjectValue, ShadowToken } from "../types/token";
+import type {
+  ColorValue,
+  ShadowObjectValue,
+  ShadowToken,
+} from "../types/token";
 import { VariableNameMap } from "../resolve/createVariableNameMap";
 import { WarningCollector } from "../warnings";
 import { resolveVariableAliasReference } from "./resolveVariableAliasReference";
