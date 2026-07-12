@@ -72,6 +72,61 @@ describe("isPluginToUiMessage", () => {
       }),
     ).toBe(false);
   });
+
+  it("type: export-progress の正しい形は true（current/total なし）", () => {
+    expect(
+      isPluginToUiMessage({ type: "export-progress", step: "collections" }),
+    ).toBe(true);
+  });
+
+  it("type: export-progress の正しい形は true（current/total あり）", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "export-progress",
+        step: "zip",
+        current: 3,
+        total: 10,
+      }),
+    ).toBe(true);
+  });
+
+  it("type: export-progress で step が不正な場合は false", () => {
+    expect(
+      isPluginToUiMessage({ type: "export-progress", step: "unknown" }),
+    ).toBe(false);
+  });
+
+  it("type: export-progress で current が文字列の場合は false", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "export-progress",
+        step: "collections",
+        current: "3",
+        total: 10,
+      }),
+    ).toBe(false);
+  });
+
+  it("type: export-progress で total が文字列の場合は false", () => {
+    expect(
+      isPluginToUiMessage({
+        type: "export-progress",
+        step: "collections",
+        current: 3,
+        total: "10",
+      }),
+    ).toBe(false);
+  });
+
+  it("type: export-error の正しい形は true", () => {
+    expect(isPluginToUiMessage({ type: "export-error", error: "boom" })).toBe(
+      true,
+    );
+  });
+
+  it("type: export-error で error が欠落している場合は false", () => {
+    expect(isPluginToUiMessage({ type: "export-error" })).toBe(false);
+  });
 });
 
 describe("isUiToPluginMessage", () => {
@@ -101,5 +156,13 @@ describe("isUiToPluginMessage", () => {
 
   it("非オブジェクト（数値）は false", () => {
     expect(isUiToPluginMessage(42)).toBe(false);
+  });
+
+  it("type: ui-ready は true", () => {
+    expect(isUiToPluginMessage({ type: "ui-ready" })).toBe(true);
+  });
+
+  it("type: close は true", () => {
+    expect(isUiToPluginMessage({ type: "close" })).toBe(true);
   });
 });
