@@ -43,7 +43,7 @@ export interface FigmaRGBA {
   readonly a: number;
 }
 
-export type FigmaDropShadowEffect = Extract<
+export type FigmaShadowEffect = Extract<
   Effect,
   { type: "DROP_SHADOW" | "INNER_SHADOW" }
 >;

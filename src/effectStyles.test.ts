@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { convertEffectStylesToShadows } from "./effectStyles";
 import { createWarningCollector } from "./warnings";
 import { effectStyles as mockEffectStyles } from "../mocks/effectStyles";
-import { FigmaDropShadowEffect, FigmaEffectStyle } from "./types/figma";
+import type { FigmaShadowEffect, FigmaEffectStyle } from "./types/figma";
 import { ShadowObjectValue, ShadowToken } from "./types/token";
 import { createVariableNameMap } from "./resolve/createVariableNameMap";
 import type { FigmaCollectionData } from "./collections";
@@ -183,7 +183,7 @@ describe("convertEffectStylesToShadows", () => {
       name: "BoundShadow",
       effects: [
         {
-          ...(mockEffectStyles[0].effects[0] as FigmaDropShadowEffect),
+          ...(mockEffectStyles[0].effects[0] as FigmaShadowEffect),
           boundVariables: {
             color: { type: "VARIABLE_ALIAS", id: "VariableID:3:2" },
           },
