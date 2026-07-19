@@ -134,6 +134,12 @@ Effect Styles は `shadow` トークンに変換されます。
 - `color` が bound の場合、alpha は参照先の Variable に従うため `effect.color.a` は出力に反映されません
 - bound の Variable ID が解決できない場合は値にフォールバックし、`kind: "alias-resolve"` の警告が `_export-warnings.json` に記録されます
 
+## 色空間（colorSpace）
+
+- `ColorValue.colorSpace` は、ドキュメントのカラープロファイル（`figma.root.documentColorProfile`）に応じて `"srgb"` または `"display-p3"` を出力します
+- `LEGACY`（カラーマネジメント無効）は `"srgb"` として扱われます
+- 数値変換は行いません。Figma はプロファイルが変わっても同じ数値（r/g/b/a）を返すため、そのまま出力し、colorSpace ラベルのみを出し分けます（Figma 自身の Dev Mode と同じ挙動）
+
 ## エイリアス（Alias）
 - FigmaのエイリアスはID参照ですが、出力時は `{GroupName.TokenName}` 形式に解決します
 - GroupNameは makeGroupName に基づく命名規則（単一: collection名、複数: collection名 + Capitalize(mode名)）で決定されます

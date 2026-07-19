@@ -5,6 +5,10 @@ import { convertCollectionToModeNamedGroups } from "./converts/convertCollection
 import { resolveAliasesForAllCollections } from "./resolve";
 import { getPaintStyles } from "./paintStyles";
 import { createVariableNameMap } from "./resolve/createVariableNameMap";
+import {
+  setDocumentColorSpace,
+  documentColorSpaceFromProfile,
+} from "./converts/util";
 import { createWarningCollector } from "./warnings";
 import { findDuplicateFileNames } from "./duplicates";
 import { buildZipFilename } from "./zipFilename";
@@ -62,6 +66,10 @@ figma.ui.onmessage = (msg: unknown) => {
 
 async function main() {
   try {
+    setDocumentColorSpace(
+      documentColorSpaceFromProfile(figma.root.documentColorProfile),
+    );
+
     console.log("========== get collections ==========");
     postProgress("collections");
     const collections = await getCollections((done, total) =>
