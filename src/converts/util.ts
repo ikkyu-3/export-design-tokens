@@ -1,6 +1,30 @@
-import { TypedFigmaVariable } from "../collections";
-import type { ColorValue, FontWeightValue } from "../types/token";
+import type { TypedFigmaVariable } from "../collections";
+import type { ColorValue, ColorSpace, FontWeightValue } from "../types/token";
 import type { ResolvedVariableAlias } from "../resolve/resolvedAlias";
+
+/**
+ * 本エクスポータが実際に出力しうる colorSpace（issue #8）。
+ * ColorSpace（DTCG 全14種）から、Figma の documentColorProfile に対応する2種に絞る。
+ * lab 等の値を RGB components のまま出力する誤用を型で防ぐ。
+ */
+export type DocumentColorSpace = Extract<ColorSpace, "srgb" | "display-p3">;
+
+let documentColorSpace: DocumentColorSpace = "srgb";
+
+/** main() 冒頭で一度だけ呼び出し、ドキュメントの色空間を注入する（issue #8） */
+export function setDocumentColorSpace(space: DocumentColorSpace): void {
+  documentColorSpace = space;
+}
+
+/**
+ * figma.root.documentColorProfile から出力用の DocumentColorSpace へ変換する（issue #8）。
+ * "DISPLAY_P3" のみ display-p3、それ以外（"SRGB" / "LEGACY"、将来 typings が増えた場合も含む）は srgb にフォールバックする。
+ */
+export function documentColorSpaceFromProfile(
+  profile: DocumentNode["documentColorProfile"],
+): DocumentColorSpace {
+  return profile === "DISPLAY_P3" ? "display-p3" : "srgb";
+}
 
 export function capitalize(str: string): string {
   if (!str) return str;
@@ -145,6 +169,8 @@ export function roundTo2ndDecimal(value: number): number {
  * DTCG の Color モジュールでは alpha の既定値が 1 のため、
  * a === 1（厳密比較）のときは alpha キー自体を省略する。
  * a ≠ 1 の値は丸めず、そのまま alpha として出力する（0 も出力される）。
+ * Figma はドキュメントのカラープロファイルが変わっても r/g/b/a に同じ数値を返し、
+ * その解釈のみが変わるため、数値変換は行わず colorSpace ラベルのみ出し分ける（issue #8）。
  */
 export function makeColorValue(
   r: number,
@@ -152,7 +178,10 @@ export function makeColorValue(
   b: number,
   a: number,
 ): ColorValue {
-  const value: ColorValue = { colorSpace: "srgb", components: [r, g, b] };
+  const value: ColorValue = {
+    colorSpace: documentColorSpace,
+    components: [r, g, b],
+  };
   if (a !== 1) {
     value.alpha = a;
   }

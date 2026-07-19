@@ -1,10 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   isColorValue,
   isAliasValue,
   toTokenReference,
   roundTo2ndDecimal,
   makeColorValue,
+  setDocumentColorSpace,
+  documentColorSpaceFromProfile,
 } from "./util";
 import { getResolvedValue } from "../resolve/resolvedAlias";
 import {
@@ -155,5 +157,33 @@ describe("makeColorValue", () => {
       components: [0.1, 0.2, 0.3],
       alpha: 0.9999,
     });
+  });
+
+  describe("colorSpace の出し分け（issue #8）", () => {
+    afterEach(() => {
+      setDocumentColorSpace("srgb");
+    });
+
+    it("setDocumentColorSpace('display-p3') 後は colorSpace: 'display-p3' を出力する", () => {
+      setDocumentColorSpace("display-p3");
+      expect(makeColorValue(0.1, 0.2, 0.3, 1)).toEqual({
+        colorSpace: "display-p3",
+        components: [0.1, 0.2, 0.3],
+      });
+    });
+  });
+});
+
+describe("documentColorSpaceFromProfile", () => {
+  it("SRGB は srgb にマップされる", () => {
+    expect(documentColorSpaceFromProfile("SRGB")).toBe("srgb");
+  });
+
+  it("LEGACY は srgb にマップされる", () => {
+    expect(documentColorSpaceFromProfile("LEGACY")).toBe("srgb");
+  });
+
+  it("DISPLAY_P3 は display-p3 にマップされる", () => {
+    expect(documentColorSpaceFromProfile("DISPLAY_P3")).toBe("display-p3");
   });
 });

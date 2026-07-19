@@ -3,8 +3,28 @@ import type { TokenValue, CommonProperties, AllTokenTypes } from "./common";
 // ============================================================================
 // Type
 // ============================================================================
+/**
+ * DTCG Color モジュール（2025.10）が定義する colorSpace の全14種（issue #8）。
+ */
+export type ColorSpace =
+  | "srgb"
+  | "srgb-linear"
+  | "hsl"
+  | "hwb"
+  | "lab"
+  | "lch"
+  | "oklab"
+  | "oklch"
+  | "display-p3"
+  | "a98-rgb"
+  | "prophoto-rgb"
+  | "rec2020"
+  | "xyz-d65"
+  | "xyz-d50";
+
 export interface ColorValue {
-  colorSpace: "srgb"; // TODO: 他のパターンもある
+  colorSpace: ColorSpace;
+  // 仕様上 components は number | "none" を許容するが、Figma の RGB は常に有限数値のため本エクスポータは数値のみ出力する（issue #8）
   components: [number, number, number];
   alpha?: number;
   hex?: string;
