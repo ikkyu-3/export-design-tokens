@@ -15,7 +15,7 @@ Figmaのローカル変数・スタイルを W3C Design Tokens Draft (https://ww
 - `npm run lint` / `npm run lint:fix`
 - `npm run format` — Prettier
 - `npm test` — vitest（`src/**/*.test.ts`、node環境、globals有効）
-- 単一テスト実行: `npx vitest run src/converts/convertEffectStyleToShadow.test.ts`
+- 単一テスト実行: `npm test -- src/converts/convertEffectStyleToShadow.test.ts`
 
 ## アーキテクチャ
 
