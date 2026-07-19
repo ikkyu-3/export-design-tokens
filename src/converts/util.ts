@@ -1,4 +1,4 @@
-import { TypedFigmaVariable } from "../collections";
+import type { TypedFigmaVariable } from "../collections";
 import type { ColorValue, ColorSpace, FontWeightValue } from "../types/token";
 import type { ResolvedVariableAlias } from "../resolve/resolvedAlias";
 
