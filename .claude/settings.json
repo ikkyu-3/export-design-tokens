@@ -1,0 +1,63 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Bash(npm run type-check)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:fix)",
+      "Bash(npm run format)",
+      "Bash(npm run build)",
+      "Bash(npm run build:dev)",
+      "Bash(npm test)",
+      "Bash(npm test -- *)",
+      "Bash(npm ci)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh repo view *)",
+      "WebFetch(domain:www.designtokens.org)",
+      "WebFetch(domain:developers.figma.com)",
+      "WebFetch(domain:help.figma.com)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git restore *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git rebase *)",
+      "Bash(git merge *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr close *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh issue create *)",
+      "Bash(gh issue close *)",
+      "Bash(gh issue edit *)",
+      "Bash(gh issue comment *)",
+      "Bash(npm install *)",
+      "Bash(npm uninstall *)",
+      "Bash(npm update *)"
+    ],
+    "deny": [
+      "Bash(npx *)",
+      "Bash(npm exec *)",
+      "Bash(pnpm dlx *)",
+      "Bash(yarn dlx *)",
+      "Bash(bunx *)",
+      "Bash(npm publish *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)"
+    ]
+  }
+}
